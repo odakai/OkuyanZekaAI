@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <script>
+    // GitHub Pages SPA redirect trick
+    const path = window.location.pathname;
+    const repo = '/readmeter'; // GitHub repo adını buraya yaz
+    window.location.replace(
+      window.location.origin + repo +
+      '/?p=' + encodeURIComponent(path.replace(repo, ''))
+    );
+  </script>
+</head>
+<body></body>
+</html>

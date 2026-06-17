@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ReadMeter</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .home-wrap {
+      min-height: calc(100vh - 56px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .home-inner {
+      max-width: 520px;
+      width: 100%;
+      text-align: center;
+    }
+
+    .home-logo {
+      width: 64px;
+      height: 64px;
+      background: var(--accent);
+      border-radius: var(--radius-lg);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.75rem;
+      margin-bottom: 24px;
+      box-shadow: 0 8px 24px rgba(37,99,235,.25);
+    }
+
+    .home-title {
+      font-size: 2rem;
+      font-weight: 600;
+      color: var(--ink-hi);
+      letter-spacing: -.5px;
+      margin-bottom: 8px;
+    }
+
+    .home-sub {
+      color: var(--ink-lo);
+      font-size: 1rem;
+      margin-bottom: 40px;
+      line-height: 1.7;
+    }
+
+    .home-cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .home-card {
+      display: block;
+      text-decoration: none;
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 28px 20px;
+      transition: all var(--transition);
+      cursor: pointer;
+    }
+
+    .home-card:hover {
+      border-color: var(--accent-mid);
+      box-shadow: var(--shadow-md);
+      transform: translateY(-2px);
+    }
+
+    .home-card-icon {
+      font-size: 2rem;
+      margin-bottom: 12px;
+    }
+
+    .home-card-title {
+      font-size: .9375rem;
+      font-weight: 600;
+      color: var(--ink-hi);
+      margin-bottom: 4px;
+    }
+
+    .home-card-desc {
+      font-size: .8125rem;
+      color: var(--ink-lo);
+      line-height: 1.5;
+    }
+
+    @media (max-width: 480px) {
+      .home-cards { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="nav">
+  <a class="nav-brand" href="index.html">
+    <div class="logo-mark">RM</div>
+    <span>ReadMeter</span>
+  </a>
+  <div class="nav-right">
+    <div class="lang-toggle">
+      <button class="lang-btn" data-lang="tr">TR</button>
+      <button class="lang-btn" data-lang="en">EN</button>
+    </div>
+  </div>
+</nav>
+
+<div class="home-wrap">
+  <div class="home-inner">
+    <div class="home-logo">📖</div>
+    <h1 class="home-title">ReadMeter</h1>
+    <p class="home-sub" id="home-sub">
+      Okuma verimini ölç. Dikkati takip et. Gelişimi gör.
+    </p>
+
+    <div class="home-cards">
+      <a class="home-card" href="parent/index.html">
+        <div class="home-card-icon">👩‍💼</div>
+        <div class="home-card-title" id="card-parent-title">Ebeveyn Paneli</div>
+        <div class="home-card-desc" id="card-parent-desc">Oturumu ayarla, raporları ve analizleri görüntüle.</div>
+      </a>
+      <a class="home-card" href="child/index.html">
+        <div class="home-card-icon">📚</div>
+        <div class="home-card-title" id="card-child-title">Okuma Ekranı</div>
+        <div class="home-card-desc" id="card-child-desc">Okumaya başla, sesliye katıl, soruları yanıtla.</div>
+      </a>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script>
+  RM.Lang.init();
+
+  const homeTexts = {
+    tr: {
+      sub: 'Okuma verimini ölç. Dikkati takip et. Gelişimi gör.',
+      parentTitle: 'Ebeveyn Paneli',
+      parentDesc: 'Oturumu ayarla, raporları ve analizleri görüntüle.',
+      childTitle: 'Okuma Ekranı',
+      childDesc: 'Okumaya başla, sesli okumaya katıl, soruları yanıtla.'
+    },
+    en: {
+      sub: 'Measure reading efficiency. Track attention. See progress.',
+      parentTitle: 'Parent Panel',
+      parentDesc: 'Set session duration, view reports and attention analysis.',
+      childTitle: 'Reading Screen',
+      childDesc: 'Start reading, read aloud on cue, answer comprehension questions.'
+    }
+  };
+
+  function applyHome() {
+    const lang = RM.Lang.get();
+    const t = homeTexts[lang];
+    document.getElementById('home-sub').textContent = t.sub;
+    document.getElementById('card-parent-title').textContent = t.parentTitle;
+    document.getElementById('card-parent-desc').textContent = t.parentDesc;
+    document.getElementById('card-child-title').textContent = t.childTitle;
+    document.getElementById('card-child-desc').textContent = t.childDesc;
+  }
+
+  applyHome();
+  document.querySelectorAll('.lang-btn').forEach(b => {
+    b.addEventListener('click', () => { applyHome(); });
+  });
+</script>
+</body>
+</html>
