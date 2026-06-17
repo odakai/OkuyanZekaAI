@@ -379,9 +379,7 @@
 
 <script src="../app.js"></script>
 <script>
-// app.js'den RM global olarak geliyor, destructure etmiyoruz
-const { DB, callAI, showToast } = RM;
-const Lang = RM.Lang;
+// RM global olarak app.js'den geliyor — destructure yok
 
 // ── i18n ──
 const CT = {
@@ -438,7 +436,7 @@ const CT = {
 };
 
 function t(key, ...args) {
-  const val = CT[Lang.get()][key];
+  const val = CT[RM.RM.Lang.get()][key];
   return typeof val === 'function' ? val(...args) : (val ?? key);
 }
 
@@ -454,7 +452,7 @@ function applyLang() {
   document.getElementById('lbl-done-btn').textContent = t('doneBtn');
 }
 
-Lang.init();
+RM.Lang.init();
 document.querySelectorAll('.lang-btn').forEach(b => b.addEventListener('click', applyLang));
 applyLang();
 
@@ -480,7 +478,7 @@ function showPhase(id) {
 // ── Load session settings ──
 async function init() {
   try {
-    const data = await DB.read();
+    const data = await RM.DB.read();
     sessionDuration = data.settings?.sessionDuration || 20;
   } catch(e) {
     sessionDuration = 20;
@@ -495,7 +493,7 @@ init();
 // ── Start ──
 document.getElementById('btn-start').addEventListener('click', () => {
   if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-    showToast(t('errorSpeech'), 'error');
+    RM.showToast(t('errorSpeech'), 'error');
     return;
   }
   showPhase('phase-reading');
@@ -595,7 +593,7 @@ function startSpeechRecognition(onResult) {
   isListening = true;
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   recognition = new SpeechRecognition();
-  recognition.lang = Lang.get() === 'tr' ? 'tr-TR' : 'en-US';
+  recognition.lang = RM.RM.Lang.get() === 'tr' ? 'tr-TR' : 'en-US';
   recognition.interimResults = false;
   recognition.maxAlternatives = 1;
 
@@ -635,7 +633,7 @@ async function onSessionEnd() {
   }
 
   const allText = segments.map((s, i) => `[Segment ${i+1}]: ${s.text}`).join('\n');
-  const lang = Lang.get() === 'tr' ? 'Türkçe' : 'English';
+  const lang = RM.Lang.get() === 'tr' ? 'Türkçe' : 'English';
 
   const prompt = `You are an educational assistant. A student just finished a reading session.
 Here are transcriptions of what they read aloud at various points during their reading:
@@ -651,8 +649,7 @@ Return ONLY a JSON array, no explanation, no markdown. Format:
 ]`;
 
   try {
-    const raw = await callAI(prompt);
-    // Parse JSON
+    const raw = await RM.callAI(prompt);
     const cleaned = raw.replace(/```json|```/g, '').trim();
     questions = JSON.parse(cleaned);
     if (!Array.isArray(questions) || questions.length === 0) throw new Error('Invalid questions');
@@ -662,9 +659,9 @@ Return ONLY a JSON array, no explanation, no markdown. Format:
     showPhase('phase-questions');
   } catch(e) {
     if (e.message === 'no_api_key') {
-      showToast(t('errorNoAI'), 'error');
+      RM.showToast(t('errorNoAI'), 'error');
     } else {
-      showToast(t('errorGeneral') + e.message, 'error');
+      RM.showToast(t('errorGeneral') + e.message, 'error');
     }
     // Fallback: go to done anyway
     await saveFallbackReport();
@@ -711,7 +708,7 @@ async function analyzeAndSave() {
   showPhase('phase-loading');
   document.getElementById('lbl-loading-msg').textContent = t('analyzingMsg');
 
-  const lang = Lang.get() === 'tr' ? 'Türkçe' : 'English';
+  const lang = RM.Lang.get() === 'tr' ? 'Türkçe' : 'English';
   const allText = segments.map((s, i) => `[Segment ${i+1} @ ${s.timestamp}s]: ${s.text}`).join('\n');
 
   const qaText = questions.map((q, i) => {
@@ -747,7 +744,7 @@ Return ONLY this JSON (no markdown):
 }`;
 
   try {
-    const raw = await callAI(analysisPrompt);
+    const raw = await RM.callAI(analysisPrompt);
     const cleaned = raw.replace(/```json|```/g, '').trim();
     const result = JSON.parse(cleaned);
 
@@ -773,21 +770,21 @@ Return ONLY this JSON (no markdown):
 
     showPhase('phase-done');
   } catch(e) {
-    showToast(t('errorGeneral') + e.message, 'error');
+    RM.showToast(t('errorGeneral') + e.message, 'error');
     await saveFallbackReport();
     showPhase('phase-done');
   }
 }
 
 async function saveReport(payload) {
-  const data = await DB.read();
+  const data = await RM.DB.read();
   if (!data.sessions) data.sessions = [];
   data.sessions.push({
     date: new Date().toISOString(),
     durationMinutes: sessionDuration,
     ...payload
   });
-  await DB.write(data);
+  await RM.DB.write(data);
 }
 
 async function saveFallbackReport() {
