@@ -379,6 +379,7 @@
 
 <script src="../app.js"></script>
 <script>
+document.addEventListener('DOMContentLoaded', function() {
 // RM global olarak app.js'den geliyor — destructure yok
 
 // ── i18n ──
@@ -436,7 +437,7 @@ const CT = {
 };
 
 function t(key, ...args) {
-  const val = CT[RM.RM.Lang.get()][key];
+  const val = CT[RM.Lang.get()][key];
   return typeof val === 'function' ? val(...args) : (val ?? key);
 }
 
@@ -593,7 +594,7 @@ function startSpeechRecognition(onResult) {
   isListening = true;
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   recognition = new SpeechRecognition();
-  recognition.lang = RM.RM.Lang.get() === 'tr' ? 'tr-TR' : 'en-US';
+  recognition.lang = RM.Lang.get() === 'tr' ? 'tr-TR' : 'en-US';
   recognition.interimResults = false;
   recognition.maxAlternatives = 1;
 
@@ -797,6 +798,8 @@ async function saveFallbackReport() {
     });
   } catch(e) { console.warn('Fallback save failed', e); }
 }
+
+}); // DOMContentLoaded sonu
 </script>
 </body>
 </html>
