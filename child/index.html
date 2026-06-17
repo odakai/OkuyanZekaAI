@@ -379,8 +379,12 @@
 
 <script src="../app.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-// RM global olarak app.js'den geliyor — destructure yok
+// app.js body sonunda yükleniyor, DOM ve RM zaten hazır.
+// Yine de RM kontrolü yapalım.
+if (typeof window.RM === 'undefined') {
+  document.body.innerHTML = '<p style="padding:40px;color:red;">Hata: app.js yüklenemedi. Dosya yolunu kontrol edin.</p>';
+  throw new Error('RM not defined');
+}
 
 // ── i18n ──
 const CT = {
@@ -798,8 +802,6 @@ async function saveFallbackReport() {
     });
   } catch(e) { console.warn('Fallback save failed', e); }
 }
-
-}); // DOMContentLoaded sonu
 </script>
 </body>
 </html>
