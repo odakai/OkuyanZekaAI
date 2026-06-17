@@ -379,7 +379,9 @@
 
 <script src="../app.js"></script>
 <script>
-const { Lang, DB, callAI, showToast } = RM;
+// app.js'den RM global olarak geliyor, destructure etmiyoruz
+const { DB, callAI, showToast } = RM;
+const Lang = RM.Lang;
 
 // ── i18n ──
 const CT = {
