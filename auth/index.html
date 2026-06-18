@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ODAK-AI — Giriş</title>
+  <link rel="stylesheet" href="../style.css">
+  <style>
+    body { display: flex; flex-direction: column; min-height: 100vh; }
+
+    .auth-wrap {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 24px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .auth-bg {
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse 70% 50% at 50% 0%, rgba(79,142,247,.12), transparent 70%);
+      pointer-events: none;
+    }
+
+    .auth-card {
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-xl);
+      padding: 40px;
+      width: min(420px, 100%);
+      box-shadow: var(--shadow-card), var(--shadow-glow);
+      position: relative;
+      z-index: 1;
+    }
+
+    .auth-logo {
+      display: flex; align-items: center; gap: 10px;
+      font-family: var(--font-display);
+      font-weight: 700; font-size: 1.125rem;
+      color: var(--text-hi);
+      margin-bottom: 28px;
+      text-decoration: none;
+    }
+
+    .auth-logo-mark {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .75rem; font-weight: 800; color: white;
+      box-shadow: 0 0 16px var(--accent-glow);
+    }
+
+    .auth-title {
+      font-family: var(--font-display);
+      font-size: 1.5rem; font-weight: 700;
+      color: var(--text-hi);
+      letter-spacing: -.02em;
+      margin-bottom: 6px;
+    }
+
+    .auth-sub {
+      font-size: .875rem; color: var(--text-lo);
+      margin-bottom: 28px;
+    }
+
+    /* Tab switch */
+    .auth-tabs {
+      display: flex;
+      background: var(--bg2);
+      border-radius: var(--radius-md);
+      padding: 3px;
+      margin-bottom: 24px;
+      gap: 2px;
+    }
+
+    .auth-tab {
+      flex: 1; padding: 8px;
+      border: none; background: none;
+      font-family: var(--font-display);
+      font-size: .85rem; font-weight: 600;
+      color: var(--text-lo);
+      border-radius: calc(var(--radius-md) - 2px);
+      transition: all var(--transition);
+      cursor: pointer;
+    }
+
+    .auth-tab.active {
+      background: var(--surface2);
+      color: var(--text-hi);
+      box-shadow: 0 1px 4px rgba(0,0,0,.25);
+    }
+
+    /* Social buttons */
+    .social-btn {
+      width: 100%;
+      padding: 11px 16px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      color: var(--text-hi);
+      font-family: var(--font-display);
+      font-size: .875rem; font-weight: 500;
+      display: flex; align-items: center; gap: 10px;
+      cursor: pointer;
+      transition: all var(--transition);
+      justify-content: center;
+    }
+
+    .social-btn:hover { border-color: var(--border2); background: var(--surface2); }
+
+    .social-icon {
+      width: 20px; height: 20px;
+      flex-shrink: 0;
+    }
+
+    /* Error state */
+    .field-error {
+      font-size: .75rem; color: var(--danger);
+      margin-top: 4px; display: none;
+    }
+    .field-error.show { display: block; }
+
+    .auth-error {
+      background: var(--danger-bg);
+      border: 1px solid rgba(248,113,113,.3);
+      border-radius: var(--radius-md);
+      padding: 10px 14px;
+      font-size: .8125rem; color: var(--danger);
+      margin-bottom: 16px; display: none;
+    }
+    .auth-error.show { display: block; }
+
+    /* Phone flow */
+    .phone-step { display: none; }
+    .phone-step.active { display: flex; flex-direction: column; gap: 14px; }
+
+    /* OTP input */
+    .otp-inputs {
+      display: flex; gap: 8px; justify-content: center;
+    }
+
+    .otp-digit {
+      width: 44px; height: 52px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      color: var(--text-hi);
+      font-family: var(--font-display);
+      font-size: 1.25rem; font-weight: 700;
+      text-align: center;
+      outline: none;
+      transition: border-color var(--transition);
+    }
+
+    .otp-digit:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+
+    .auth-switch {
+      text-align: center;
+      font-size: .8125rem; color: var(--text-lo);
+      margin-top: 20px;
+    }
+    .auth-switch a { color: var(--accent); cursor: pointer; }
+
+    #recaptcha-container { display: none; }
+  </style>
+</head>
+<body>
+
+<nav class="nav">
+  <a class="nav-brand" href="../index.html">
+    <div class="nav-logo">OA</div>
+    <span>ODAK-AI</span>
+  </a>
+  <div class="nav-right">
+    <div class="lang-toggle">
+      <button class="lang-btn active" data-lang="tr">TR</button>
+      <button class="lang-btn" data-lang="en">EN</button>
+    </div>
+  </div>
+</nav>
+
+<div class="auth-wrap">
+  <div class="auth-bg"></div>
+
+  <div class="auth-card">
+    <a class="auth-logo" href="../index.html">
+      <div class="auth-logo-mark">OA</div>
+      ODAK-AI
+    </a>
+
+    <!-- Tab: Login / Register -->
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tab-login" onclick="switchTab('login')">
+        <span id="lbl-tab-login">Giriş Yap</span>
+      </button>
+      <button class="auth-tab" id="tab-register" onclick="switchTab('register')">
+        <span id="lbl-tab-register">Kayıt Ol</span>
+      </button>
+    </div>
+
+    <div class="auth-error" id="auth-error"></div>
+
+    <!-- ── LOGIN PANEL ── -->
+    <div id="panel-login">
+      <!-- Method tabs -->
+      <div style="display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap;">
+        <button class="btn btn-ghost btn-sm" id="method-email-btn" onclick="setMethod('email')" style="flex:1;">
+          ✉️ <span id="lbl-email-method">E-posta</span>
+        </button>
+        <button class="btn btn-ghost btn-sm" id="method-phone-btn" onclick="setMethod('phone')" style="flex:1;">
+          📱 <span id="lbl-phone-method">Telefon</span>
+        </button>
+      </div>
+
+      <!-- Email form -->
+      <div id="email-form">
+        <div class="form-group" style="margin-bottom:12px;">
+          <label class="form-label" id="lbl-email">E-posta</label>
+          <input class="form-input" type="email" id="inp-email" placeholder="ornek@mail.com">
+        </div>
+        <div class="form-group" style="margin-bottom:20px;">
+          <label class="form-label" id="lbl-password">Şifre</label>
+          <input class="form-input" type="password" id="inp-password" placeholder="••••••••">
+        </div>
+        <div id="register-extra" style="display:none;">
+          <div class="form-group" style="margin-bottom:20px;">
+            <label class="form-label" id="lbl-name">Adınız</label>
+            <input class="form-input" type="text" id="inp-name" placeholder="Ad Soyad">
+          </div>
+        </div>
+        <button class="btn btn-primary w-full" id="btn-email-submit" onclick="handleEmailAuth()">
+          <span id="lbl-email-submit">Giriş Yap</span>
+        </button>
+      </div>
+
+      <!-- Phone flow -->
+      <div id="phone-form" style="display:none;">
+        <div class="phone-step active" id="phone-step-1">
+          <div class="form-group">
+            <label class="form-label" id="lbl-phone">Telefon Numarası</label>
+            <input class="form-input" type="tel" id="inp-phone" placeholder="+90 5XX XXX XX XX">
+          </div>
+          <button class="btn btn-primary w-full" id="btn-phone-send" onclick="sendPhoneOTP()">
+            <span id="lbl-send-otp">Kod Gönder</span>
+          </button>
+        </div>
+        <div class="phone-step" id="phone-step-2">
+          <p style="font-size:.8125rem; color:var(--text-lo); text-align:center;" id="lbl-otp-desc">
+            Telefonunuza gelen 6 haneli kodu girin
+          </p>
+          <div class="otp-inputs" id="otp-inputs"></div>
+          <button class="btn btn-primary w-full" id="btn-verify-otp" onclick="verifyOTP()">
+            <span id="lbl-verify">Doğrula</span>
+          </button>
+        </div>
+      </div>
+
+      <div id="recaptcha-container"></div>
+
+      <div class="divider-text" style="margin:20px 0; font-size:.78rem;">
+        <span id="lbl-or">veya</span>
+      </div>
+
+      <!-- Google -->
+      <button class="social-btn" onclick="loginWithGoogle()">
+        <svg class="social-icon" viewBox="0 0 24 24">
+          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+        </svg>
+        <span id="lbl-google">Google ile devam et</span>
+      </button>
+    </div>
+
+    <!-- ── REGISTER PANEL (same as login, tabs handle it) ── -->
+
+    <div class="auth-switch" id="auth-switch">
+      <span id="lbl-switch-text">Hesabın yok mu?</span>
+      <a onclick="switchTab('register')" id="lbl-switch-link"> Kayıt ol</a>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script src="../firebase.js" type="module"></script>
+<script src="../app.js"></script>
+<script>
+if (typeof window.OdakApp === 'undefined') {
+  window.addEventListener('odak:app:ready', initAuth, { once: true });
+} else { initAuth(); }
+
+const texts = {
+  tr: {
+    tabLogin: 'Giriş Yap', tabRegister: 'Kayıt Ol',
+    emailMethod: 'E-posta', phoneMethod: 'Telefon',
+    email: 'E-posta', password: 'Şifre', name: 'Adınız',
+    emailSubmitLogin: 'Giriş Yap', emailSubmitRegister: 'Hesap Oluştur',
+    phone: 'Telefon Numarası', sendOtp: 'Kod Gönder',
+    otpDesc: 'Telefonunuza gelen 6 haneli kodu girin',
+    verify: 'Doğrula', or: 'veya',
+    google: 'Google ile devam et',
+    switchTextLogin: 'Hesabın yok mu?', switchLinkLogin: ' Kayıt ol',
+    switchTextRegister: 'Zaten hesabın var mı?', switchLinkRegister: ' Giriş yap',
+    loginTitle: 'Tekrar hoş geldin', loginSub: 'Hesabına giriş yap',
+    registerTitle: 'Hesap oluştur', registerSub: 'ODAK-AI\'ya katıl',
+  },
+  en: {
+    tabLogin: 'Log In', tabRegister: 'Sign Up',
+    emailMethod: 'Email', phoneMethod: 'Phone',
+    email: 'Email', password: 'Password', name: 'Your Name',
+    emailSubmitLogin: 'Log In', emailSubmitRegister: 'Create Account',
+    phone: 'Phone Number', sendOtp: 'Send Code',
+    otpDesc: 'Enter the 6-digit code sent to your phone',
+    verify: 'Verify', or: 'or',
+    google: 'Continue with Google',
+    switchTextLogin: 'No account?', switchLinkLogin: ' Sign up',
+    switchTextRegister: 'Already have an account?', switchLinkRegister: ' Log in',
+    loginTitle: 'Welcome back', loginSub: 'Sign in to your account',
+    registerTitle: 'Create account', registerSub: 'Join ODAK-AI',
+  }
+};
+
+let currentTab = 'login';
+let currentMethod = 'email';
+let confirmationResult = null;
+let recaptchaVerifier = null;
+
+function initAuth() {
+  const { Lang, Theme, waitForFirebase } = OdakApp;
+  Theme.init();
+  Lang.init();
+
+  // URL'den mode oku
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('mode') === 'register') switchTab('register');
+
+  applyTexts();
+  window.addEventListener('odak:lang:change', applyTexts);
+
+  // OTP input'ları oluştur
+  const otpWrap = document.getElementById('otp-inputs');
+  for (let i = 0; i < 6; i++) {
+    const inp = document.createElement('input');
+    inp.className = 'otp-digit';
+    inp.maxLength = 1;
+    inp.inputMode = 'numeric';
+    inp.addEventListener('input', e => {
+      if (e.target.value && i < 5) otpWrap.children[i+1].focus();
+    });
+    inp.addEventListener('keydown', e => {
+      if (e.key === 'Backspace' && !e.target.value && i > 0) otpWrap.children[i-1].focus();
+    });
+    otpWrap.appendChild(inp);
+  }
+
+  // Auth state: zaten giriş yaptıysa panel'e gönder
+  waitForFirebase().then(fb => {
+    fb.Auth.onAuthChange(user => {
+      if (user) window.location.href = '../parent/index.html';
+    });
+  });
+}
+
+function applyTexts() {
+  const l = OdakApp.Lang.get();
+  const T = texts[l];
+  document.getElementById('lbl-tab-login').textContent = T.tabLogin;
+  document.getElementById('lbl-tab-register').textContent = T.tabRegister;
+  document.getElementById('lbl-email-method').textContent = T.emailMethod;
+  document.getElementById('lbl-phone-method').textContent = T.phoneMethod;
+  document.getElementById('lbl-email').textContent = T.email;
+  document.getElementById('lbl-password').textContent = T.password;
+  document.getElementById('lbl-name').textContent = T.name;
+  document.getElementById('lbl-email-submit').textContent = currentTab === 'login' ? T.emailSubmitLogin : T.emailSubmitRegister;
+  document.getElementById('lbl-phone').textContent = T.phone;
+  document.getElementById('lbl-send-otp').textContent = T.sendOtp;
+  document.getElementById('lbl-otp-desc').textContent = T.otpDesc;
+  document.getElementById('lbl-verify').textContent = T.verify;
+  document.getElementById('lbl-or').textContent = T.or;
+  document.getElementById('lbl-google').textContent = T.google;
+  updateSwitch();
+}
+
+function updateSwitch() {
+  const l = OdakApp.Lang.get();
+  const T = texts[l];
+  if (currentTab === 'login') {
+    document.getElementById('lbl-switch-text').textContent = T.switchTextLogin;
+    document.getElementById('lbl-switch-link').textContent = T.switchLinkLogin;
+    document.getElementById('lbl-switch-link').onclick = () => switchTab('register');
+  } else {
+    document.getElementById('lbl-switch-text').textContent = T.switchTextRegister;
+    document.getElementById('lbl-switch-link').textContent = T.switchLinkRegister;
+    document.getElementById('lbl-switch-link').onclick = () => switchTab('login');
+  }
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.getElementById('tab-login').classList.toggle('active', tab === 'login');
+  document.getElementById('tab-register').classList.toggle('active', tab === 'register');
+  document.getElementById('register-extra').style.display = tab === 'register' ? 'block' : 'none';
+  const l = OdakApp.Lang.get();
+  document.getElementById('lbl-email-submit').textContent =
+    tab === 'login' ? texts[l].emailSubmitLogin : texts[l].emailSubmitRegister;
+  updateSwitch();
+  clearError();
+}
+
+function setMethod(method) {
+  currentMethod = method;
+  document.getElementById('email-form').style.display = method === 'email' ? 'block' : 'none';
+  document.getElementById('phone-form').style.display = method === 'phone' ? 'block' : 'none';
+  document.getElementById('method-email-btn').className = 'btn btn-sm ' + (method === 'email' ? 'btn-primary' : 'btn-ghost');
+  document.getElementById('method-phone-btn').className = 'btn btn-sm ' + (method === 'phone' ? 'btn-primary' : 'btn-ghost');
+  clearError();
+}
+
+function showError(msg) {
+  const el = document.getElementById('auth-error');
+  el.textContent = msg;
+  el.classList.add('show');
+}
+
+function clearError() {
+  document.getElementById('auth-error').classList.remove('show');
+}
+
+async function handleEmailAuth() {
+  clearError();
+  const email = document.getElementById('inp-email').value.trim();
+  const password = document.getElementById('inp-password').value;
+  const name = document.getElementById('inp-name').value.trim();
+
+  if (!email || !password) { showError('E-posta ve şifre gerekli.'); return; }
+
+  const btn = document.getElementById('btn-email-submit');
+  btn.disabled = true;
+  btn.querySelector('span').textContent = '…';
+
+  try {
+    const fb = await OdakApp.waitForFirebase();
+    if (currentTab === 'register') {
+      await fb.Auth.registerWithEmail(email, password, name);
+    } else {
+      await fb.Auth.loginWithEmail(email, password);
+    }
+    window.location.href = '../parent/index.html';
+  } catch(e) {
+    const msg = e.code === 'auth/wrong-password' ? 'Şifre yanlış.'
+      : e.code === 'auth/user-not-found' ? 'Bu e-posta ile kayıtlı hesap yok.'
+      : e.code === 'auth/email-already-in-use' ? 'Bu e-posta zaten kullanımda.'
+      : e.code === 'auth/weak-password' ? 'Şifre en az 6 karakter olmalı.'
+      : e.message;
+    showError(msg);
+    btn.disabled = false;
+    applyTexts();
+  }
+}
+
+async function loginWithGoogle() {
+  clearError();
+  try {
+    const fb = await OdakApp.waitForFirebase();
+    await fb.Auth.loginWithGoogle();
+    window.location.href = '../parent/index.html';
+  } catch(e) {
+    showError(e.message);
+  }
+}
+
+async function sendPhoneOTP() {
+  clearError();
+  const phone = document.getElementById('inp-phone').value.trim();
+  if (!phone) { showError('Telefon numarası gerekli.'); return; }
+
+  try {
+    const fb = await OdakApp.waitForFirebase();
+    if (!recaptchaVerifier) {
+      recaptchaVerifier = fb.Auth.setupRecaptcha('recaptcha-container');
+    }
+    confirmationResult = await fb.Auth.sendPhoneOTP(phone, recaptchaVerifier);
+    document.getElementById('phone-step-1').classList.remove('active');
+    document.getElementById('phone-step-2').classList.add('active');
+    document.getElementById('otp-inputs').children[0]?.focus();
+  } catch(e) {
+    showError(e.message);
+  }
+}
+
+async function verifyOTP() {
+  clearError();
+  const digits = Array.from(document.getElementById('otp-inputs').children).map(i => i.value).join('');
+  if (digits.length < 6) { showError('6 haneli kodu eksiksiz girin.'); return; }
+
+  try {
+    await confirmationResult.confirm(digits);
+    window.location.href = '../parent/index.html';
+  } catch(e) {
+    showError('Kod yanlış veya süresi dolmuş.');
+  }
+}
+</script>
+</body>
+</html>
