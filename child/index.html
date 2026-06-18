@@ -366,25 +366,21 @@
 <script src="../firebase.js" type="module"></script>
 <script src="../app.js"></script>
 <script>
-if (typeof window.OdakApp === 'undefined') {
-  window.addEventListener('odak:app:ready', initChild, { once: true });
-} else { initChild(); }
+// ── State — en üstte var ile ──
+var childInfo = null;
+var sessionDuration = 20;
+var totalSeconds = 0;
+var elapsedSeconds = 0;
+var timerInterval = null;
+var ralTimeoutId = null;
+var segments = [];
+var questions = [];
+var userAnswers = [];
+var currentQIdx = 0;
+var isListening = false;
+var recognition = null;
 
-// ── State ──
-let childInfo = null;         // { parentUid, childId, childName, parentData }
-let sessionDuration = 20;
-let totalSeconds = 0;
-let elapsedSeconds = 0;
-let timerInterval = null;
-let ralTimeoutId = null;
-let segments = [];            // { text, timestamp, attention }
-let questions = [];
-let userAnswers = [];
-let currentQIdx = 0;
-let isListening = false;
-let recognition = null;
-
-const CT = {
+var CT = {
   tr: {
     codeTitle: 'Giriş Kodu', codeSub: 'Ebeveyninden aldığın 6 haneli kodu gir',
     btnEnter: 'Giriş Yap', codeError: 'Geçersiz kod. Tekrar dene.',
@@ -767,6 +763,13 @@ async function saveReport(payload) {
       { date: new Date().toISOString(), durationMinutes: sessionDuration, ...payload }
     );
   } catch(e) { console.warn('Rapor kaydedilemedi:', e); }
+}
+
+// En sonda çağır
+if (typeof window.OdakApp !== 'undefined') {
+  initChild();
+} else {
+  window.addEventListener('odak:app:ready', initChild, { once: true });
 }
 </script>
 </body>
