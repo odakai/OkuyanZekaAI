@@ -290,9 +290,11 @@
 <script src="../firebase.js" type="module"></script>
 <script src="../app.js"></script>
 <script>
-if (typeof window.OdakApp === 'undefined') {
-  window.addEventListener('odak:app:ready', initAuth, { once: true });
-} else { initAuth(); }
+// Değişkenler en üstte — temporal dead zone yok
+var currentTab = 'login';
+var currentMethod = 'email';
+var confirmationResult = null;
+var recaptchaVerifier = null;
 
 const texts = {
   tr: {
@@ -325,10 +327,7 @@ const texts = {
   }
 };
 
-let currentTab = 'login';
-let currentMethod = 'email';
-let confirmationResult = null;
-let recaptchaVerifier = null;
+let currentTab_unused; // kaldırıldı, yukarıda var ile tanımlandı
 
 function initAuth() {
   const { Lang, Theme, waitForFirebase } = OdakApp;
@@ -470,7 +469,11 @@ async function loginWithGoogle() {
     await fb.Auth.loginWithGoogle();
     window.location.href = '../parent/index.html';
   } catch(e) {
-    showError(e.message);
+    if (e.code === 'auth/unauthorized-domain') {
+      showError('Bu domain Firebase\'de yetkili değil. Firebase Console → Authentication → Settings → Authorized Domains bölümüne "odakai.github.io" ekleyin.');
+    } else {
+      showError(e.message);
+    }
   }
 }
 
@@ -504,6 +507,13 @@ async function verifyOTP() {
   } catch(e) {
     showError('Kod yanlış veya süresi dolmuş.');
   }
+}
+
+// OdakApp hazır olunca başlat
+if (typeof window.OdakApp !== 'undefined') {
+  initAuth();
+} else {
+  window.addEventListener('odak:app:ready', initAuth, { once: true });
 }
 </script>
 </body>
