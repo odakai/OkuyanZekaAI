@@ -422,18 +422,15 @@
 <script src="../firebase.js" type="module"></script>
 <script src="../app.js"></script>
 <script>
-if (typeof window.OdakApp === 'undefined') {
-  window.addEventListener('odak:app:ready', initParent, { once: true });
-} else { initParent(); }
+// Değişkenler en üstte
+var currentUser = null;
+var parentData  = null;
+var selectedReportIndex = null;
+var detailChartInstance  = null;
+var secretClickCount = 0;
+var secretTimer = null;
 
-let currentUser = null;
-let parentData  = null;
-let selectedReportIndex = null;
-let detailChartInstance  = null;
-let secretClickCount = 0;
-let secretTimer = null;
-
-const T = {
+var T = {
   tr: {
     childrenTitle: 'Çocuklarım', childrenSub: 'Her çocuk için ayrı oturum ve rapor yönetimi.',
     addChild: 'Çocuk Ekle', sessionTitle: 'Oturum Ayarları', sessionDur: 'Oturum Süresi (dakika)', saveSess: 'Kaydet',
@@ -785,6 +782,13 @@ async function doLogout() {
   window.location.href = '../auth/index.html';
 }
 document.getElementById('btn-logout').onclick = doLogout;
+
+// En sonda çağır — tüm fonksiyonlar tanımlandıktan sonra
+if (typeof window.OdakApp !== 'undefined') {
+  initParent();
+} else {
+  window.addEventListener('odak:app:ready', initParent, { once: true });
+}
 </script>
 </body>
 </html>
