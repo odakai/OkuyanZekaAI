@@ -10,38 +10,41 @@
     appId: "1:344460023439:web:b77a83bb56d0be0b4342fa"
   };
 
-  // Firebase CDN modülleri
-  const FB_VER = "10.12.2";
+  const FB_VER  = "10.12.2";
   const FB_BASE = `https://www.gstatic.com/firebasejs/${FB_VER}`;
 
+  // Firestore offline hatasını handle eden wrapper
+  async function withRetry(fn, retries = 3) {
+    for (let i = 0; i < retries; i++) {
+      try {
+        return await fn();
+      } catch (e) {
+        const isOffline = e.message && (
+          e.message.includes('offline') ||
+          e.message.includes('client is offline') ||
+          e.code === 'unavailable'
+        );
+        if (isOffline && i < retries - 1) {
+          await new Promise(r => setTimeout(r, 1500 * (i + 1)));
+          continue;
+        }
+        throw e;
+      }
+    }
+  }
+
   async function loadFirebase() {
-    const { initializeApp } = await import(`${FB_BASE}/firebase-app.js`);
+    const { initializeApp }     = await import(`${FB_BASE}/firebase-app.js`);
     const {
-      getAuth,
-      signInWithPopup,
-      GoogleAuthProvider,
-      createUserWithEmailAndPassword,
-      signInWithEmailAndPassword,
-      signOut,
-      onAuthStateChanged,
-      setPersistence,
-      browserLocalPersistence,
-      PhoneAuthProvider,
-      RecaptchaVerifier,
-      signInWithPhoneNumber,
+      getAuth, signInWithPopup, GoogleAuthProvider,
+      createUserWithEmailAndPassword, signInWithEmailAndPassword,
+      signOut, onAuthStateChanged, setPersistence,
+      browserLocalPersistence, RecaptchaVerifier, signInWithPhoneNumber,
     } = await import(`${FB_BASE}/firebase-auth.js`);
 
     const {
-      getFirestore,
-      doc,
-      setDoc,
-      getDoc,
-      updateDoc,
-      arrayUnion,
-      collection,
-      query,
-      where,
-      getDocs,
+      getFirestore, enableNetwork, doc, setDoc, getDoc,
+      updateDoc, arrayUnion, collection, getDocs,
     } = await import(`${FB_BASE}/firebase-firestore.js`);
 
     const app  = initializeApp(firebaseConfig);
@@ -51,38 +54,40 @@
     // Kalıcı oturum
     await setPersistence(auth, browserLocalPersistence);
 
+    // Network yeniden bağlan (offline hatasından sonra)
+    async function ensureOnline() {
+      try { await enableNetwork(db); } catch(e) { /* zaten online */ }
+    }
+
     // ── Auth helpers ──
     const Auth = {
       async loginWithGoogle() {
         const provider = new GoogleAuthProvider();
-        const result = await signInWithPopup(auth, provider);
+        const result   = await signInWithPopup(auth, provider);
+        await ensureOnline();
         await ensureUserDoc(result.user);
         return result.user;
       },
 
       async loginWithEmail(email, password) {
         const result = await signInWithEmailAndPassword(auth, email, password);
+        await ensureOnline();
         await ensureUserDoc(result.user);
         return result.user;
       },
 
       async registerWithEmail(email, password, displayName) {
         const result = await createUserWithEmailAndPassword(auth, email, password);
+        await ensureOnline();
         await ensureUserDoc(result.user, displayName);
         return result.user;
       },
 
-      async logout() {
-        await signOut(auth);
-      },
+      async logout() { await signOut(auth); },
 
-      onAuthChange(cb) {
-        onAuthStateChanged(auth, cb);
-      },
+      onAuthChange(cb) { onAuthStateChanged(auth, cb); },
 
-      currentUser() {
-        return auth.currentUser;
-      },
+      currentUser() { return auth.currentUser; },
 
       setupRecaptcha(elementId) {
         return new RecaptchaVerifier(auth, elementId, { size: 'invisible' });
@@ -95,74 +100,76 @@
 
     // ── Firestore helpers ──
     async function ensureUserDoc(user, displayName) {
-      const ref = doc(db, 'parents', user.uid);
-      const snap = await getDoc(ref);
+      const ref  = doc(db, 'parents', user.uid);
+      const snap = await withRetry(() => getDoc(ref));
       if (!snap.exists()) {
-        await setDoc(ref, {
-          uid: user.uid,
-          email: user.email || '',
+        await withRetry(() => setDoc(ref, {
+          uid:         user.uid,
+          email:       user.email || '',
           displayName: displayName || user.displayName || '',
-          children: [],
-          settings: { sessionDuration: 20, aiProvider: 'openai', apiKey: '', theme: 'default' },
-          sessions: [],
-          createdAt: new Date().toISOString()
-        });
+          children:    [],
+          settings:    { sessionDuration: 20, aiProvider: 'openai', apiKey: '' },
+          sessions:    [],
+          createdAt:   new Date().toISOString()
+        }));
       }
     }
 
     const DB = {
       async getParent(uid) {
-        const snap = await getDoc(doc(db, 'parents', uid));
-        return snap.exists() ? snap.data() : null;
+        await ensureOnline();
+        const snap = await withRetry(() => getDoc(doc(db, 'parents', uid)));
+        if (!snap.exists()) return null;
+        const data = snap.data();
+        // Eksik alanları doldur
+        if (!data.children) data.children = [];
+        if (!data.sessions) data.sessions = [];
+        if (!data.settings) data.settings = { sessionDuration: 20, aiProvider: 'openai', apiKey: '' };
+        return data;
       },
 
       async updateParent(uid, data) {
-        await updateDoc(doc(db, 'parents', uid), data);
+        await ensureOnline();
+        await withRetry(() => updateDoc(doc(db, 'parents', uid), data));
       },
 
       async addChild(uid, child) {
-        // child: { id, name, code, createdAt }
-        const ref = doc(db, 'parents', uid);
-        const snap = await getDoc(ref);
-        const existing = snap.data().children || [];
-        const updated = [...existing, child];
-        await updateDoc(ref, { children: updated });
+        await ensureOnline();
+        // arrayUnion yerine güvenli okuma+yazma kullan
+        const ref  = doc(db, 'parents', uid);
+        const snap = await withRetry(() => getDoc(ref));
+        const existing = snap.exists() ? (snap.data().children || []) : [];
+        const updated  = [...existing, child];
+        await withRetry(() => updateDoc(ref, { children: updated }));
         return updated;
       },
 
-      async saveSession(uid, session) {
-        const ref = doc(db, 'parents', uid);
-        const snap = await getDoc(ref);
-        const sessions = snap.data().sessions || [];
-        sessions.push(session);
-        await updateDoc(ref, { sessions });
+      async registerChildCode(code, parentUid, childId, childName) {
+        await ensureOnline();
+        await withRetry(() => setDoc(doc(db, 'childCodes', code), {
+          parentUid, childId, childName,
+          createdAt: new Date().toISOString()
+        }));
       },
 
       async getParentByChildCode(code) {
-        const q = query(collection(db, 'parents'), where('children', 'array-contains', { code }));
-        // array-contains ile nested object aramak Firestore'da çalışmaz
-        // Alternatif: ayrı 'childCodes' map'i tut
-        // Bunu basit tutmak için: tüm parent'larda arama yapabiliriz
-        // Ama bu pahalı. Bunun yerine childCodes collection kullanacağız.
-        const codeRef = doc(db, 'childCodes', code);
-        const codeSnap = await getDoc(codeRef);
+        await ensureOnline();
+        const codeSnap = await withRetry(() => getDoc(doc(db, 'childCodes', code)));
         if (!codeSnap.exists()) return null;
         const { parentUid, childId, childName } = codeSnap.data();
         const parentData = await DB.getParent(parentUid);
         return { parentUid, childId, childName, parentData };
       },
 
-      async registerChildCode(code, parentUid, childId, childName) {
-        await setDoc(doc(db, 'childCodes', code), {
-          parentUid, childId, childName,
-          createdAt: new Date().toISOString()
-        });
-      },
-
       async saveChildSession(code, session) {
+        await ensureOnline();
         const info = await DB.getParentByChildCode(code);
         if (!info) throw new Error('Geçersiz kod');
-        await DB.saveSession(info.parentUid, { ...session, childId: info.childId, childName: info.childName });
+        const ref  = doc(db, 'parents', info.parentUid);
+        const snap = await withRetry(() => getDoc(ref));
+        const sessions = snap.exists() ? (snap.data().sessions || []) : [];
+        sessions.push({ ...session, childId: info.childId, childName: info.childName });
+        await withRetry(() => updateDoc(ref, { sessions }));
       }
     };
 
@@ -170,6 +177,8 @@
     window.dispatchEvent(new Event('odak:firebase:ready'));
   }
 
-  loadFirebase().catch(console.error);
+  loadFirebase().catch(e => {
+    console.error('Firebase yüklenemedi:', e);
+  });
 
 })();
