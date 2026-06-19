@@ -516,16 +516,40 @@ async function initParent() {
   window.addEventListener('odak:lang:change', applyTexts);
 
   currentUser = await requireAuth('../auth/index.html');
-  document.getElementById('nav-user-name').textContent = currentUser.displayName || currentUser.email || '';
+  document.getElementById('nav-user-name').textContent =
+    currentUser.displayName || currentUser.email || '';
 
-  const fb = await OdakApp.waitForFirebase();
-  parentData = await fb.DB.getParent(currentUser.uid);
+  // Hesap bilgilerini hemen yaz (Firebase'den beklemeye gerek yok)
+  document.getElementById('account-info').innerHTML = `
+    <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">
+      <div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:1.1rem;">
+        ${currentUser.photoURL
+          ? `<img src="${currentUser.photoURL}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;">`
+          : '👤'}
+      </div>
+      <div>
+        <div style="font-weight:600;color:var(--text-hi);">${currentUser.displayName || '—'}</div>
+        <div style="font-size:.8rem;color:var(--text-lo);">${currentUser.email || currentUser.phoneNumber || ''}</div>
+      </div>
+    </div>
+    <div style="font-size:.78rem;color:var(--text-xlo);">UID: ${currentUser.uid.substring(0,16)}…</div>`;
+
+  // Firebase bağlantısını bekle + veri çek
+  try {
+    const fb = await OdakApp.waitForFirebase();
+    parentData = await fb.DB.getParent(currentUser.uid);
+    if (!parentData) {
+      // Kullanıcı dokümanı yoksa oluştur
+      parentData = { children: [], sessions: [], settings: { sessionDuration: 20, aiProvider: 'openai', apiKey: '' } };
+    }
+  } catch(e) {
+    OdakApp.showToast('Veriler yüklenirken hata: ' + e.message, 'error');
+    parentData = { children: [], sessions: [], settings: { sessionDuration: 20, aiProvider: 'openai', apiKey: '' } };
+  }
 
   loadChildren();
   loadSettings();
   buildThemeOptions();
-  document.getElementById('account-info').innerHTML =
-    `<strong style="color:var(--text-hi)">${currentUser.displayName || '—'}</strong><br>${currentUser.email || ''}`;
 
   // Secret panel
   document.getElementById('secret-trigger').addEventListener('click', () => {
@@ -589,8 +613,14 @@ function closeAddChild() { document.getElementById('add-child-modal').classList.
 async function addChild() {
   const name = document.getElementById('inp-child-name').value.trim();
   if (!name) return;
+
+  const btn = document.getElementById('btn-confirm-add');
+  btn.disabled = true;
+  document.getElementById('lbl-confirm-add').textContent = '…';
+
   const code = OdakApp.generateChildCode();
   const child = { id: Date.now().toString(), name, code, createdAt: new Date().toISOString() };
+
   try {
     const fb = await OdakApp.waitForFirebase();
     await fb.DB.addChild(currentUser.uid, child);
@@ -600,7 +630,12 @@ async function addChild() {
     closeAddChild();
     document.getElementById('code-display').textContent = code;
     document.getElementById('code-modal').classList.remove('hidden');
-  } catch(e) { OdakApp.showToast(e.message, 'error'); }
+  } catch(e) {
+    OdakApp.showToast('Hata: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    document.getElementById('lbl-confirm-add').textContent = t('confirmAdd');
+  }
 }
 
 function closeCodeModal() { document.getElementById('code-modal').classList.add('hidden'); }
