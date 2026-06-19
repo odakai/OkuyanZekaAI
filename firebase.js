@@ -118,29 +118,65 @@
     const DB = {
       async getParent(uid) {
         await ensureOnline();
-        const snap = await withRetry(() => getDoc(doc(db, 'parents', uid)));
-        if (!snap.exists()) return null;
+        const ref  = doc(db, 'parents', uid);
+        const snap = await withRetry(() => getDoc(ref));
+        if (!snap.exists()) {
+          // Doküman yoksa oluştur
+          const fresh = {
+            uid,
+            email:       auth.currentUser?.email || '',
+            displayName: auth.currentUser?.displayName || '',
+            children:    [],
+            settings:    { sessionDuration: 20, aiProvider: 'openai', apiKey: '' },
+            sessions:    [],
+            createdAt:   new Date().toISOString()
+          };
+          await withRetry(() => setDoc(ref, fresh));
+          return fresh;
+        }
         const data = snap.data();
-        // Eksik alanları doldur
-        if (!data.children) data.children = [];
-        if (!data.sessions) data.sessions = [];
+        // Eksik alanları garantiye al
+        if (!Array.isArray(data.children)) data.children = [];
+        if (!Array.isArray(data.sessions)) data.sessions = [];
         if (!data.settings) data.settings = { sessionDuration: 20, aiProvider: 'openai', apiKey: '' };
         return data;
       },
 
       async updateParent(uid, data) {
         await ensureOnline();
-        await withRetry(() => updateDoc(doc(db, 'parents', uid), data));
+        const ref  = doc(db, 'parents', uid);
+        const snap = await withRetry(() => getDoc(ref));
+        if (!snap.exists()) {
+          // Doküman yoksa setDoc ile oluştur
+          await withRetry(() => setDoc(ref, {
+            uid,
+            email:       auth.currentUser?.email || '',
+            displayName: auth.currentUser?.displayName || '',
+            children:    [],
+            settings:    { sessionDuration: 20, aiProvider: 'openai', apiKey: '' },
+            sessions:    [],
+            createdAt:   new Date().toISOString(),
+            ...data
+          }));
+        } else {
+          await withRetry(() => updateDoc(ref, data));
+        }
       },
 
       async addChild(uid, child) {
         await ensureOnline();
-        // arrayUnion yerine güvenli okuma+yazma kullan
         const ref  = doc(db, 'parents', uid);
         const snap = await withRetry(() => getDoc(ref));
         const existing = snap.exists() ? (snap.data().children || []) : [];
         const updated  = [...existing, child];
-        await withRetry(() => updateDoc(ref, { children: updated }));
+        if (!snap.exists()) {
+          await withRetry(() => setDoc(ref, {
+            uid, children: updated, sessions: [], settings: {},
+            createdAt: new Date().toISOString()
+          }));
+        } else {
+          await withRetry(() => updateDoc(ref, { children: updated }));
+        }
         return updated;
       },
 
@@ -165,11 +201,15 @@
         await ensureOnline();
         const info = await DB.getParentByChildCode(code);
         if (!info) throw new Error('Geçersiz kod');
-        const ref  = doc(db, 'parents', info.parentUid);
-        const snap = await withRetry(() => getDoc(ref));
+        const ref      = doc(db, 'parents', info.parentUid);
+        const snap     = await withRetry(() => getDoc(ref));
         const sessions = snap.exists() ? (snap.data().sessions || []) : [];
         sessions.push({ ...session, childId: info.childId, childName: info.childName });
-        await withRetry(() => updateDoc(ref, { sessions }));
+        if (!snap.exists()) {
+          await withRetry(() => setDoc(ref, { sessions }));
+        } else {
+          await withRetry(() => updateDoc(ref, { sessions }));
+        }
       }
     };
 
