@@ -94,12 +94,30 @@ const Theme = {
   themes: ['default', 'light', 'forest', 'sunset'],
   labels: { default: 'Gece Mavisi', light: 'Açık', forest: 'Orman', sunset: 'Gün Batımı' },
   current() { return localStorage.getItem('odak_theme') || 'default'; },
+  isDark() { const t = this.current(); return t === 'default' || t === 'forest' || t === 'sunset'; },
   apply(name) {
-    document.documentElement.setAttribute('data-theme', name === 'default' ? '' : name);
     if (name === 'default') document.documentElement.removeAttribute('data-theme');
+    else document.documentElement.setAttribute('data-theme', name);
     localStorage.setItem('odak_theme', name);
+    this._updateToggleIcon();
   },
-  init() { this.apply(this.current()); }
+  toggle() {
+    const next = this.isDark() ? 'light' : 'default';
+    this.apply(next);
+  },
+  _updateToggleIcon() {
+    document.querySelectorAll('.theme-toggle').forEach(btn => {
+      btn.textContent = this.isDark() ? '☀️' : '🌙';
+      btn.title = this.isDark() ? 'Açık temaya geç' : 'Koyu temaya geç';
+    });
+  },
+  init() {
+    this.apply(this.current());
+    // Toggle butonlarına click ekle
+    document.querySelectorAll('.theme-toggle').forEach(btn => {
+      btn.addEventListener('click', () => this.toggle());
+    });
+  }
 };
 
 // ── AI Caller ──
