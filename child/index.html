@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ODAK-AI — Okuma Ekranı</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%234F8EF7'/><text y='22' x='7' font-size='18' fill='white'>📖</text></svg>">
   <link rel="stylesheet" href="../style.css">
   <style>
     /* ── Phases ── */
@@ -442,15 +443,16 @@ function t(key, ...args) {
 }
 
 function applyTexts() {
-  document.getElementById('lbl-code-title').textContent = t('codeTitle');
-  document.getElementById('lbl-code-sub').textContent = t('codeSub');
-  document.getElementById('lbl-btn-enter').textContent = t('btnEnter');
-  document.getElementById('lbl-start-hint').textContent = t('startHint');
-  document.getElementById('lbl-btn-start').textContent = t('btnStart');
-  document.getElementById('lbl-reading-hint').textContent = t('readingHint');
-  document.getElementById('lbl-done-title').textContent = t('doneTitle');
-  document.getElementById('lbl-done-sub').textContent = t('doneSub');
-  document.getElementById('lbl-done-btn').textContent = t('doneBtn');
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  set('lbl-code-title', t('codeTitle'));
+  set('lbl-code-sub', t('codeSub'));
+  set('lbl-btn-enter', t('btnEnter'));
+  set('lbl-start-hint', t('startHint'));
+  set('lbl-btn-start', t('btnStart'));
+  set('lbl-reading-hint', t('readingHint'));
+  set('lbl-done-title', t('doneTitle'));
+  set('lbl-done-sub', t('doneSub'));
+  set('lbl-done-btn', t('doneBtn'));
 }
 
 function showPhase(id) {
