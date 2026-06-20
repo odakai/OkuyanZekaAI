@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ODAK-AI — Ebeveyn Paneli</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%234F8EF7'/><text y='22' x='7' font-size='18' fill='white'>📖</text></svg>">
   <link rel="stylesheet" href="../style.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
@@ -477,34 +478,35 @@ var T = {
 function t(key) { return T[OdakApp.Lang.get()]?.[key] ?? key; }
 
 function applyTexts() {
-  document.getElementById('lbl-children-title').textContent = t('childrenTitle');
-  document.getElementById('lbl-children-sub').textContent = t('childrenSub');
-  document.getElementById('lbl-add-child').textContent = t('addChild');
-  document.getElementById('lbl-session-title').textContent = t('sessionTitle');
-  document.getElementById('lbl-session-dur').textContent = t('sessionDur');
-  document.getElementById('lbl-save-session').textContent = t('saveSess');
-  document.getElementById('lbl-reports-title').textContent = t('reportsTitle');
-  document.getElementById('lbl-reports-sub').textContent = t('reportsSub');
-  document.getElementById('lbl-settings-title').textContent = t('settingsTitle');
-  document.getElementById('lbl-settings-sub').textContent = t('settingsSub');
-  document.getElementById('lbl-theme-title').textContent = t('themeTitle');
-  document.getElementById('lbl-account-title').textContent = t('accountTitle');
-  document.getElementById('lbl-nav-children').textContent = t('navChildren');
-  document.getElementById('lbl-nav-reports').textContent = t('navReports');
-  document.getElementById('lbl-nav-settings').textContent = t('navSettings');
-  document.getElementById('lbl-nav-logout').textContent = t('navLogout');
-  document.getElementById('lbl-add-child-title').textContent = t('addChildTitle');
-  document.getElementById('lbl-child-name-label').textContent = t('childNameLabel');
-  document.getElementById('lbl-cancel-add').textContent = t('cancelAdd');
-  document.getElementById('lbl-confirm-add').textContent = t('confirmAdd');
-  document.getElementById('lbl-code-done').textContent = t('codeDone');
-  document.getElementById('lbl-ai-provider').textContent = t('aiProvider');
-  document.getElementById('lbl-ai-key').textContent = t('aiKey');
-  document.getElementById('dtab-overview').textContent = t('dtabOverview');
-  document.getElementById('dtab-attention').textContent = t('dtabAttention');
-  document.getElementById('dtab-qa').textContent = t('dtabQA');
-  document.getElementById('dtab-analysis').textContent = t('dtabAnalysis');
-  document.getElementById('btn-logout').textContent = t('logout');
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  set('lbl-children-title', t('childrenTitle'));
+  set('lbl-children-sub', t('childrenSub'));
+  set('lbl-add-child', t('addChild'));
+  set('lbl-session-title', t('sessionTitle'));
+  set('lbl-session-dur', t('sessionDur'));
+  set('lbl-save-session', t('saveSess'));
+  set('lbl-reports-title', t('reportsTitle'));
+  set('lbl-reports-sub', t('reportsSub'));
+  set('lbl-settings-title', t('settingsTitle'));
+  set('lbl-settings-sub', t('settingsSub'));
+  set('lbl-theme-title', t('themeTitle'));
+  set('lbl-account-title', t('accountTitle'));
+  set('lbl-nav-children', t('navChildren'));
+  set('lbl-nav-reports', t('navReports'));
+  set('lbl-nav-settings', t('navSettings'));
+  set('lbl-nav-logout', t('navLogout'));
+  set('lbl-add-child-title', t('addChildTitle'));
+  set('lbl-child-name-label', t('childNameLabel'));
+  set('lbl-cancel-add', t('cancelAdd'));
+  set('lbl-confirm-add', t('confirmAdd'));
+  set('lbl-code-done', t('codeDone'));
+  set('lbl-ai-provider', t('aiProvider'));
+  set('lbl-ai-key', t('aiKey'));
+  set('dtab-overview', t('dtabOverview'));
+  set('dtab-attention', t('dtabAttention'));
+  set('dtab-qa', t('dtabQA'));
+  set('dtab-analysis', t('dtabAnalysis'));
+  set('btn-logout', t('logout'));
   buildThemeOptions();
 }
 
@@ -587,8 +589,9 @@ function loadChildren() {
   children.forEach(child => {
     const card = document.createElement('div');
     card.className = 'child-card';
+    const initial = child.name.charAt(0).toUpperCase();
     card.innerHTML = `
-      <div class="child-avatar">👧</div>
+      <div class="child-avatar" style="font-size:1.375rem; font-family:var(--font-display); font-weight:700; color:white;">${initial}</div>
       <div class="child-name">${child.name}</div>
       <div class="child-code">${child.code}</div>`;
     grid.appendChild(card);
@@ -697,7 +700,7 @@ async function loadReports() {
   try {
     const fb = await OdakApp.waitForFirebase();
     const data = await fb.DB.getParent(currentUser.uid);
-    const sessions = (data.sessions || []).slice().reverse();
+    const sessions = ((data && data.sessions) ? data.sessions : []).slice().reverse();
     if (!sessions.length) {
       container.innerHTML = `<div class="empty"><div class="empty-icon">📭</div><div>${t('noReports')}</div></div>`;
       return;
