@@ -7,228 +7,161 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%234F8EF7'/><text y='22' x='7' font-size='18' fill='white'>📖</text></svg>">
   <link rel="stylesheet" href="../style.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
   <style>
-    .layout { display: flex; min-height: calc(100vh - var(--nav-h)); }
-
-    /* ── Sidebar ── */
+    .layout { display:flex; min-height:calc(100vh - var(--nav-h)); }
     .sidebar {
-      width: 220px;
-      background: var(--bg2);
-      border-right: 1px solid var(--border);
-      padding: 24px 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      flex-shrink: 0;
+      width:220px; background:var(--bg2); border-right:1px solid var(--border);
+      padding:24px 16px; display:flex; flex-direction:column; gap:4px; flex-shrink:0;
     }
-
-    .sidebar-section {
-      font-size: .68rem;
-      font-weight: 700;
-      letter-spacing: .1em;
-      text-transform: uppercase;
-      color: var(--text-xlo);
-      font-family: var(--font-display);
-      padding: 4px 10px;
-      margin-top: 16px;
-    }
-
     .sidebar-item {
-      display: flex; align-items: center; gap: 9px;
-      padding: 9px 10px;
-      border-radius: var(--radius-sm);
-      font-size: .875rem; font-weight: 500;
-      color: var(--text-mid);
-      cursor: pointer;
-      transition: all var(--transition);
-      border: none; background: none;
-      width: 100%; text-align: left;
-      font-family: var(--font-body);
+      display:flex; align-items:center; gap:9px; padding:9px 10px;
+      border-radius:var(--radius-sm); font-size:.875rem; font-weight:500;
+      color:var(--text-mid); cursor:pointer; transition:all var(--transition);
+      border:none; background:none; width:100%; text-align:left; font-family:var(--font-body);
     }
+    .sidebar-item:hover { background:var(--surface); color:var(--text-hi); }
+    .sidebar-item.active { background:rgba(79,142,247,.12); color:var(--accent); }
+    .sidebar-bottom { margin-top:auto; padding-top:16px; border-top:1px solid var(--border); }
+    .main { flex:1; padding:32px; overflow-y:auto; }
+    .page-title { font-family:var(--font-display); font-size:1.375rem; font-weight:700; color:var(--text-hi); letter-spacing:-.02em; margin-bottom:4px; }
+    .page-sub { font-size:.875rem; color:var(--text-lo); margin-bottom:28px; }
 
-    .sidebar-item:hover { background: var(--surface); color: var(--text-hi); }
-    .sidebar-item.active { background: rgba(79,142,247,.12); color: var(--accent); }
-
-    .sidebar-bottom { margin-top: auto; padding-top: 16px; border-top: 1px solid var(--border); }
-
-    /* ── Main ── */
-    .main { flex: 1; padding: 32px; overflow-y: auto; }
-
-    .page-title {
-      font-family: var(--font-display);
-      font-size: 1.375rem; font-weight: 700;
-      color: var(--text-hi);
-      letter-spacing: -.02em;
-      margin-bottom: 4px;
+    /* PDF Upload */
+    .pdf-drop {
+      border:2px dashed var(--border2); border-radius:var(--radius-lg);
+      padding:40px 24px; text-align:center; cursor:pointer;
+      transition:all var(--transition); background:var(--bg2);
     }
+    .pdf-drop:hover, .pdf-drop.dragover { border-color:var(--accent); background:rgba(79,142,247,.05); }
+    .pdf-drop-icon { font-size:2.5rem; margin-bottom:12px; }
+    .pdf-drop-title { font-family:var(--font-display); font-size:1rem; font-weight:600; color:var(--text-hi); margin-bottom:4px; }
+    .pdf-drop-sub { font-size:.8125rem; color:var(--text-lo); }
 
-    .page-sub { font-size: .875rem; color: var(--text-lo); margin-bottom: 28px; }
-
-    /* ── Children Grid ── */
-    .children-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-      gap: 16px;
-      margin-bottom: 32px;
+    .pdf-info {
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:var(--radius-lg); padding:18px 20px;
+      display:flex; align-items:center; gap:14px;
     }
+    .pdf-info-icon { font-size:1.75rem; flex-shrink:0; }
+    .pdf-info-name { font-size:.9rem; font-weight:600; color:var(--text-hi); }
+    .pdf-info-meta { font-size:.78rem; color:var(--text-lo); margin-top:2px; }
 
+    /* Page range */
+    .page-range-row { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+    .page-range-row .form-input { max-width:90px; }
+    .page-limit-warn { font-size:.78rem; color:var(--warn); margin-top:6px; display:none; }
+    .page-limit-warn.show { display:block; }
+
+    /* Children */
+    .children-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:16px; margin-bottom:28px; }
     .child-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      padding: 22px 18px;
-      text-align: center;
-      transition: all var(--transition);
-      cursor: pointer;
-      position: relative;
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:var(--radius-lg); padding:20px 16px; text-align:center;
+      cursor:pointer; transition:all var(--transition);
     }
-
-    .child-card:hover { border-color: var(--border2); box-shadow: var(--shadow-glow); transform: translateY(-2px); }
-    .child-card.selected { border-color: var(--accent); background: rgba(79,142,247,.06); }
-
+    .child-card:hover { border-color:var(--border2); box-shadow:var(--shadow-glow); transform:translateY(-2px); }
+    .child-card.selected { border-color:var(--accent); background:rgba(79,142,247,.06); }
     .child-avatar {
-      width: 52px; height: 52px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
-      display: flex; align-items: center; justify-content: center;
-      font-size: 1.375rem;
-      margin: 0 auto 12px;
+      width:50px; height:50px; border-radius:50%;
+      background:linear-gradient(135deg,var(--accent),var(--accent2));
+      display:flex; align-items:center; justify-content:center;
+      font-family:var(--font-display); font-size:1.25rem; font-weight:700; color:white;
+      margin:0 auto 10px;
     }
-
-    .child-name {
-      font-family: var(--font-display);
-      font-size: .9375rem; font-weight: 600;
-      color: var(--text-hi); margin-bottom: 4px;
-    }
-
-    .child-code {
-      font-size: .72rem; font-family: monospace;
-      color: var(--text-lo);
-      background: var(--bg2);
-      padding: 2px 8px;
-      border-radius: 4px;
-      display: inline-block;
-    }
-
+    .child-name { font-family:var(--font-display); font-size:.9rem; font-weight:600; color:var(--text-hi); margin-bottom:4px; }
+    .child-code { font-size:.72rem; font-family:monospace; color:var(--text-lo); background:var(--bg2); padding:2px 8px; border-radius:4px; display:inline-block; }
     .add-child-card {
-      background: var(--surface);
-      border: 1px dashed var(--border2);
-      border-radius: var(--radius-lg);
-      padding: 22px 18px;
-      text-align: center;
-      cursor: pointer;
-      transition: all var(--transition);
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      gap: 8px;
-      color: var(--text-lo);
-      min-height: 130px;
+      background:var(--surface); border:1px dashed var(--border2);
+      border-radius:var(--radius-lg); padding:20px 16px; text-align:center;
+      cursor:pointer; transition:all var(--transition);
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      gap:8px; color:var(--text-lo); min-height:120px;
     }
+    .add-child-card:hover { border-color:var(--accent); color:var(--accent); background:rgba(79,142,247,.04); }
 
-    .add-child-card:hover { border-color: var(--accent); color: var(--accent); background: rgba(79,142,247,.04); }
+    /* Session start button */
+    .session-start-box {
+      background:var(--surface); border:1px solid var(--border2);
+      border-radius:var(--radius-lg); padding:24px;
+      display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;
+    }
+    .session-start-info { flex:1; }
+    .session-start-title { font-family:var(--font-display); font-size:1rem; font-weight:600; color:var(--text-hi); margin-bottom:4px; }
+    .session-start-meta { font-size:.8125rem; color:var(--text-lo); }
 
-    /* ── Reports ── */
-    .report-list { display: flex; flex-direction: column; gap: 12px; }
-
+    /* Reports */
+    .report-list { display:flex; flex-direction:column; gap:12px; }
     .report-row {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      padding: 18px 20px;
-      display: flex; align-items: center; gap: 16px;
-      cursor: pointer;
-      transition: all var(--transition);
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:var(--radius-lg); padding:18px 20px;
+      display:flex; align-items:center; gap:16px; cursor:pointer; transition:all var(--transition);
     }
-
-    .report-row:hover { border-color: var(--border2); }
-
+    .report-row:hover { border-color:var(--border2); }
     .report-score {
-      width: 48px; height: 48px;
-      border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      font-family: var(--font-display);
-      font-size: .875rem; font-weight: 700;
-      flex-shrink: 0;
+      width:48px; height:48px; border-radius:50%;
+      display:flex; align-items:center; justify-content:center;
+      font-family:var(--font-display); font-size:.875rem; font-weight:700; flex-shrink:0;
     }
+    .score-hi { background:var(--success-bg); color:var(--success); }
+    .score-md { background:var(--warn-bg); color:var(--warn); }
+    .score-lo { background:var(--danger-bg); color:var(--danger); }
+    .report-meta { flex:1; }
+    .report-child { font-size:.875rem; font-weight:600; color:var(--text-hi); }
+    .report-date { font-size:.78rem; color:var(--text-lo); margin-top:2px; }
 
-    .score-hi { background: var(--success-bg); color: var(--success); }
-    .score-md { background: var(--warn-bg); color: var(--warn); }
-    .score-lo { background: var(--danger-bg); color: var(--danger); }
-
-    .report-meta { flex: 1; }
-    .report-child { font-size: .875rem; font-weight: 600; color: var(--text-hi); }
-    .report-date  { font-size: .78rem; color: var(--text-lo); margin-top: 2px; }
-
-    /* Detail Modal */
-    .detail-tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+    /* Detail modal */
+    .detail-tabs { display:flex; gap:2px; border-bottom:1px solid var(--border); margin-bottom:20px; }
     .dtab {
-      padding: 8px 14px; font-size: .8125rem; font-weight: 500;
-      border: none; background: none; border-bottom: 2px solid transparent;
-      color: var(--text-lo); cursor: pointer; font-family: var(--font-display);
-      transition: all var(--transition); margin-bottom: -1px;
+      padding:8px 14px; font-size:.8125rem; font-weight:500;
+      border:none; background:none; border-bottom:2px solid transparent;
+      color:var(--text-lo); cursor:pointer; font-family:var(--font-display);
+      transition:all var(--transition); margin-bottom:-1px;
     }
-    .dtab.active { color: var(--accent); border-bottom-color: var(--accent); }
-    .tab-panel { display: none; }
-    .tab-panel.active { display: block; }
+    .dtab.active { color:var(--accent); border-bottom-color:var(--accent); }
+    .tab-panel { display:none; }
+    .tab-panel.active { display:block; }
 
-    .attn-row { display: flex; align-items: center; gap: 10px; font-size: .8125rem; margin-bottom: 8px; }
-    .attn-label { min-width: 90px; color: var(--text-mid); }
-    .attn-bar-wrap { flex:1; height: 7px; background: var(--bg2); border-radius: 99px; overflow: hidden; }
-    .attn-bar { height: 100%; border-radius: 99px; transition: width .6s ease; }
-    .attn-pct { min-width: 36px; text-align: right; font-family: monospace; font-size: .72rem; color: var(--text-lo); }
+    .speed-seg-row { display:flex; align-items:center; gap:10px; font-size:.8125rem; margin-bottom:8px; }
+    .speed-seg-label { min-width:100px; color:var(--text-mid); }
+    .speed-bar-wrap { flex:1; height:7px; background:var(--bg2); border-radius:99px; overflow:hidden; }
+    .speed-bar { height:100%; border-radius:99px; }
+    .speed-pct { min-width:60px; text-align:right; font-family:monospace; font-size:.72rem; color:var(--text-lo); }
 
-    .qa-card { border: 1px solid var(--border); border-radius: var(--radius-md); padding: 14px; margin-bottom: 10px; }
-    .qa-q { font-size: .875rem; font-weight: 500; color: var(--text-hi); margin-bottom: 8px; }
-    .qa-a { font-size: .8125rem; color: var(--text-mid); }
-    .ai-box { background: var(--bg2); border-radius: var(--radius-md); padding: 16px; font-size: .875rem; line-height: 1.75; white-space: pre-wrap; color: var(--text-mid); }
+    .qa-card { border:1px solid var(--border); border-radius:var(--radius-md); padding:14px; margin-bottom:10px; }
+    .qa-q { font-size:.875rem; font-weight:500; color:var(--text-hi); margin-bottom:8px; }
+    .qa-a { font-size:.8125rem; color:var(--text-mid); }
+    .ai-box { background:var(--bg2); border-radius:var(--radius-md); padding:16px; font-size:.875rem; line-height:1.75; white-space:pre-wrap; color:var(--text-mid); }
+    .chart-wrap { height:180px; position:relative; }
 
-    .chart-wrap { height: 180px; position: relative; }
+    /* Settings */
+    .theme-options { display:flex; gap:10px; flex-wrap:wrap; margin-top:8px; }
+    .theme-dot { width:32px; height:32px; border-radius:50%; border:2px solid transparent; cursor:pointer; transition:all var(--transition); }
+    .theme-dot.active { border-color:var(--accent); transform:scale(1.15); }
 
-    /* Settings panel */
-    .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-
-    .theme-options { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
-    .theme-dot {
-      width: 32px; height: 32px; border-radius: 50%;
-      border: 2px solid transparent;
-      cursor: pointer; transition: all var(--transition);
-    }
-    .theme-dot.active { border-color: var(--accent); transform: scale(1.15); }
-
-    /* Secret AI panel */
+    /* Secret AI */
     .secret-panel {
-      position: fixed; bottom: 56px; left: 16px;
-      width: 290px;
-      background: var(--surface);
-      border: 1px solid var(--border2);
-      border-radius: var(--radius-lg);
-      padding: 20px;
-      box-shadow: var(--shadow-lg);
-      z-index: 400;
-      display: none;
+      position:fixed; bottom:56px; left:16px; width:290px;
+      background:var(--surface); border:1px solid var(--border2);
+      border-radius:var(--radius-lg); padding:20px; box-shadow:var(--shadow-lg);
+      z-index:400; display:none;
     }
-    .secret-panel.open { display: block; }
+    .secret-panel.open { display:block; }
     #secret-trigger { position:fixed; bottom:0; left:0; width:44px; height:44px; z-index:401; cursor:default; }
 
-    /* Empty state */
-    .empty { text-align: center; padding: 48px 24px; color: var(--text-xlo); }
-    .empty-icon { font-size: 2.5rem; margin-bottom: 12px; }
+    .empty { text-align:center; padding:48px 24px; color:var(--text-xlo); }
+    .empty-icon { font-size:2.5rem; margin-bottom:12px; }
 
-    @media (max-width: 768px) {
-      .sidebar { display: none; }
-      .settings-grid { grid-template-columns: 1fr; }
-    }
+    @media(max-width:768px) { .sidebar { display:none; } }
   </style>
 </head>
 <body>
-
 <nav class="nav">
   <a class="nav-brand" href="../index.html">
-    <div class="nav-logo">OA</div>
-    <span>ODAK-AI</span>
+    <div class="nav-logo">OA</div><span>ODAK-AI</span>
   </a>
   <div class="nav-right">
-    <span style="font-size:.8125rem; color:var(--text-lo);" id="nav-user-name"></span>
+    <span style="font-size:.8125rem;color:var(--text-lo);" id="nav-user-name"></span>
     <button class="btn btn-ghost btn-sm" id="btn-logout">Çıkış</button>
     <button class="theme-toggle" title="Temayı değiştir">☀️</button>
     <div class="lang-toggle">
@@ -239,73 +172,154 @@
 </nav>
 
 <div class="layout">
-  <!-- Sidebar -->
   <aside class="sidebar">
-    <button class="sidebar-item active" id="nav-children-btn" onclick="showSection('children')">
-      👨‍👧 <span id="lbl-nav-children">Çocuklarım</span>
-    </button>
-    <button class="sidebar-item" id="nav-reports-btn" onclick="showSection('reports')">
-      📊 <span id="lbl-nav-reports">Raporlar</span>
-    </button>
-    <button class="sidebar-item" id="nav-settings-btn" onclick="showSection('settings')">
-      ⚙️ <span id="lbl-nav-settings">Ayarlar</span>
-    </button>
+    <button class="sidebar-item active" id="nav-session-btn" onclick="showSection('session')">📄 <span id="lbl-nav-session">Oturum Başlat</span></button>
+    <button class="sidebar-item" id="nav-children-btn" onclick="showSection('children')">👨‍👧 <span id="lbl-nav-children">Çocuklarım</span></button>
+    <button class="sidebar-item" id="nav-reports-btn" onclick="showSection('reports')">📊 <span id="lbl-nav-reports">Raporlar</span></button>
+    <button class="sidebar-item" id="nav-settings-btn" onclick="showSection('settings')">⚙️ <span id="lbl-nav-settings">Ayarlar</span></button>
     <div class="sidebar-bottom">
-      <button class="sidebar-item" id="nav-logout-btn" onclick="doLogout()">
-        🚪 <span id="lbl-nav-logout">Çıkış Yap</span>
-      </button>
+      <button class="sidebar-item" onclick="doLogout()">🚪 <span id="lbl-nav-logout">Çıkış Yap</span></button>
     </div>
   </aside>
 
-  <main class="main" id="main-content">
+  <main class="main">
 
-    <!-- ══ CHILDREN SECTION ══ -->
-    <div id="section-children">
-      <div class="page-title" id="lbl-children-title">Çocuklarım</div>
-      <p class="page-sub" id="lbl-children-sub">Her çocuk için ayrı oturum ve rapor yönetimi.</p>
+    <!-- ══ SESSION SECTION ══ -->
+    <div id="section-session">
+      <div class="page-title" id="lbl-session-title">Oturum Başlat</div>
+      <p class="page-sub" id="lbl-session-sub">PDF yükle, sayfa aralığı seç, çocuğu seç ve oturumu hazırla.</p>
 
-      <div class="children-grid" id="children-grid">
-        <div class="add-child-card" onclick="openAddChild()">
-          <span style="font-size:1.75rem;">＋</span>
-          <span style="font-size:.875rem; font-weight:600;" id="lbl-add-child">Çocuk Ekle</span>
+      <!-- Step 1: PDF -->
+      <div class="card" style="margin-bottom:20px;">
+        <div style="font-size:.875rem;font-weight:600;color:var(--text-hi);margin-bottom:16px;display:flex;align-items:center;gap:8px;">
+          <span style="width:22px;height:22px;border-radius:50%;background:var(--accent);color:white;display:inline-flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;">1</span>
+          <span id="lbl-step1">PDF Kitap</span>
+        </div>
+
+        <div id="pdf-drop-area" class="pdf-drop">
+          <div class="pdf-drop-icon">📄</div>
+          <div class="pdf-drop-title" id="lbl-pdf-drop-title">PDF dosyasını buraya sürükle veya tıkla</div>
+          <div class="pdf-drop-sub" id="lbl-pdf-drop-sub">Sadece metin bazlı PDF · Maks 50MB</div>
+          <input type="file" id="pdf-file-input" accept=".pdf" style="display:none;">
+        </div>
+
+        <div id="pdf-info-box" style="display:none; margin-top:14px;">
+          <div class="pdf-info">
+            <div class="pdf-info-icon">📄</div>
+            <div>
+              <div class="pdf-info-name" id="pdf-name">—</div>
+              <div class="pdf-info-meta" id="pdf-meta">—</div>
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="clearPDF()" style="margin-left:auto;" id="lbl-pdf-clear">Kaldır</button>
+          </div>
+          <div id="pdf-warn" style="display:none; margin-top:10px; padding:10px 14px; background:var(--warn-bg); border:1px solid rgba(251,191,36,.3); border-radius:var(--radius-md); font-size:.8125rem; color:var(--warn);">
+            ⚠️ <span id="pdf-warn-text">Bu PDF'den metin çıkarılamadı. Taranmış (görüntü bazlı) olabilir.</span>
+          </div>
         </div>
       </div>
 
-      <!-- Session settings -->
-      <div class="card" style="max-width:440px;">
-        <div style="font-size:.9375rem; font-weight:600; color:var(--text-hi); margin-bottom:16px;" id="lbl-session-title">Oturum Ayarları</div>
-        <div class="form-group" style="margin-bottom:14px;">
-          <label class="form-label" id="lbl-session-dur">Oturum Süresi (dakika)</label>
-          <input class="form-input" type="number" id="inp-duration" min="5" max="120" value="20" style="max-width:120px;">
+      <!-- Step 2: Page range -->
+      <div class="card" style="margin-bottom:20px;">
+        <div style="font-size:.875rem;font-weight:600;color:var(--text-hi);margin-bottom:16px;display:flex;align-items:center;gap:8px;">
+          <span style="width:22px;height:22px;border-radius:50%;background:var(--accent);color:white;display:inline-flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;">2</span>
+          <span id="lbl-step2">Sayfa Aralığı</span>
         </div>
-        <button class="btn btn-primary btn-sm" id="btn-save-session" onclick="saveSessionSettings()">
-          <span id="lbl-save-session">Kaydet</span>
+        <div class="page-range-row">
+          <div class="form-group">
+            <label class="form-label" id="lbl-page-from">Başlangıç Sayfası</label>
+            <input class="form-input" type="number" id="inp-page-from" min="1" value="1">
+          </div>
+          <div style="margin-top:24px; color:var(--text-lo);">—</div>
+          <div class="form-group">
+            <label class="form-label" id="lbl-page-to">Bitiş Sayfası</label>
+            <input class="form-input" type="number" id="inp-page-to" min="1" value="10">
+          </div>
+          <div style="margin-top:24px;">
+            <button class="btn btn-ghost btn-sm" id="btn-extract" onclick="extractPages()" disabled>
+              <span id="lbl-extract">Metni Çıkar</span>
+            </button>
+          </div>
+        </div>
+        <div class="page-limit-warn" id="page-limit-warn">⚠️ <span id="lbl-page-limit">Maksimum 15 sayfa seçebilirsiniz.</span></div>
+        <div id="extract-status" style="margin-top:10px; font-size:.8125rem; color:var(--text-lo);"></div>
+        <div id="text-preview" style="display:none; margin-top:14px;">
+          <div style="font-size:.78rem; color:var(--text-lo); margin-bottom:6px;" id="lbl-preview">Metin önizleme (ilk 300 karakter):</div>
+          <div style="background:var(--bg2); border-radius:var(--radius-md); padding:12px; font-size:.8125rem; color:var(--text-mid); line-height:1.6; max-height:100px; overflow:hidden;" id="preview-content"></div>
+        </div>
+      </div>
+
+      <!-- Step 3: Child select -->
+      <div class="card" style="margin-bottom:20px;">
+        <div style="font-size:.875rem;font-weight:600;color:var(--text-hi);margin-bottom:16px;display:flex;align-items:center;gap:8px;">
+          <span style="width:22px;height:22px;border-radius:50%;background:var(--accent);color:white;display:inline-flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;">3</span>
+          <span id="lbl-step3">Çocuk Seç</span>
+        </div>
+        <div class="children-grid" id="child-select-grid"></div>
+      </div>
+
+      <!-- Step 4: Duration -->
+      <div class="card" style="margin-bottom:20px;">
+        <div style="font-size:.875rem;font-weight:600;color:var(--text-hi);margin-bottom:16px;display:flex;align-items:center;gap:8px;">
+          <span style="width:22px;height:22px;border-radius:50%;background:var(--accent);color:white;display:inline-flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;">4</span>
+          <span id="lbl-step4">Oturum Süresi</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+          <div class="form-group">
+            <label class="form-label" id="lbl-duration">Süre (dakika)</label>
+            <input class="form-input" type="number" id="inp-duration" min="5" max="120" value="20" style="max-width:110px;">
+          </div>
+        </div>
+      </div>
+
+      <!-- Prepare button -->
+      <div class="session-start-box">
+        <div class="session-start-info">
+          <div class="session-start-title" id="lbl-prepare-title">Oturumu Hazırla</div>
+          <div class="session-start-meta" id="lbl-prepare-meta">PDF metni AI'a gönderilecek ve sorular hazırlanacak.</div>
+        </div>
+        <button class="btn btn-primary" id="btn-prepare" onclick="prepareSession()" disabled>
+          <span id="lbl-btn-prepare">🤖 Hazırla</span>
         </button>
       </div>
+
+      <!-- Ready state -->
+      <div id="session-ready-box" style="display:none; margin-top:16px;">
+        <div style="background:var(--success-bg); border:1px solid rgba(52,211,153,.3); border-radius:var(--radius-lg); padding:20px 24px;">
+          <div style="font-family:var(--font-display); font-size:1rem; font-weight:600; color:var(--success); margin-bottom:4px;" id="lbl-ready-title">✅ Oturum Hazır!</div>
+          <div style="font-size:.8125rem; color:var(--text-mid); margin-bottom:14px;" id="lbl-ready-sub">Sorular üretildi. Çocuğun giriş kodunu paylaş ve okumaya başlamasını söyle.</div>
+          <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+            <div style="font-family:monospace; font-size:1.5rem; font-weight:700; color:var(--accent); background:var(--bg2); border:1px solid var(--border2); padding:8px 20px; border-radius:var(--radius-md);" id="ready-code">—</div>
+            <span style="font-size:.8125rem; color:var(--text-lo);" id="lbl-ready-code-hint">Bu kodu çocuğuna ver</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ CHILDREN SECTION ══ -->
+    <div id="section-children" style="display:none;">
+      <div class="page-title" id="lbl-children-title">Çocuklarım</div>
+      <p class="page-sub" id="lbl-children-sub">Her çocuk için ayrı giriş kodu.</p>
+      <div class="children-grid" id="children-grid"></div>
     </div>
 
     <!-- ══ REPORTS SECTION ══ -->
     <div id="section-reports" style="display:none;">
       <div class="page-title" id="lbl-reports-title">Raporlar</div>
       <p class="page-sub" id="lbl-reports-sub">Tüm oturum sonuçları.</p>
-      <div id="reports-list">
-        <div class="empty"><div class="empty-icon">⏳</div><div id="lbl-loading-reports">Yükleniyor…</div></div>
-      </div>
+      <div id="reports-list"><div class="empty"><div class="empty-icon">⏳</div><div id="lbl-loading">Yükleniyor…</div></div></div>
     </div>
 
     <!-- ══ SETTINGS SECTION ══ -->
     <div id="section-settings" style="display:none;">
       <div class="page-title" id="lbl-settings-title">Ayarlar</div>
       <p class="page-sub" id="lbl-settings-sub">Hesap ve uygulama tercihleri.</p>
-
-      <div class="card" style="max-width:540px; margin-bottom:20px;">
-        <div style="font-size:.875rem; font-weight:600; color:var(--text-hi); margin-bottom:16px;" id="lbl-theme-title">Tema</div>
+      <div class="card" style="max-width:520px; margin-bottom:20px;">
+        <div style="font-size:.875rem;font-weight:600;color:var(--text-hi);margin-bottom:14px;" id="lbl-theme-title">Tema</div>
         <div class="theme-options" id="theme-options"></div>
       </div>
-
-      <div class="card" style="max-width:540px;">
-        <div style="font-size:.875rem; font-weight:600; color:var(--text-hi); margin-bottom:16px;" id="lbl-account-title">Hesap Bilgileri</div>
-        <div style="font-size:.875rem; color:var(--text-lo);" id="account-info"></div>
+      <div class="card" style="max-width:520px;">
+        <div style="font-size:.875rem;font-weight:600;color:var(--text-hi);margin-bottom:14px;" id="lbl-account-title">Hesap</div>
+        <div id="account-info" style="font-size:.875rem; color:var(--text-lo);"></div>
       </div>
     </div>
 
@@ -317,99 +331,78 @@
   <div class="modal">
     <h2 class="modal-title" id="lbl-add-child-title">Çocuk Ekle</h2>
     <div class="form-group" style="margin-bottom:20px;">
-      <label class="form-label" id="lbl-child-name-label">Çocuğun Adı</label>
+      <label class="form-label" id="lbl-child-name">Çocuğun Adı</label>
       <input class="form-input" type="text" id="inp-child-name" placeholder="Örn: Ayşe">
     </div>
-    <div style="display:flex; gap:10px;">
-      <button class="btn btn-ghost" style="flex:1;" onclick="closeAddChild()" id="lbl-cancel-add">İptal</button>
-      <button class="btn btn-primary" style="flex:1;" onclick="addChild()" id="btn-confirm-add">
-        <span id="lbl-confirm-add">Ekle ve Kod Oluştur</span>
-      </button>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-ghost" style="flex:1;" onclick="closeAddChild()" id="lbl-cancel">İptal</button>
+      <button class="btn btn-primary" style="flex:1;" onclick="addChild()"><span id="lbl-add-confirm">Ekle ve Kod Oluştur</span></button>
     </div>
   </div>
 </div>
 
-<!-- Child Code Modal (after add) -->
+<!-- Code Modal -->
 <div class="modal-overlay hidden" id="code-modal">
   <div class="modal" style="text-align:center;">
-    <div style="font-size:2.5rem; margin-bottom:12px;">🎉</div>
-    <h2 class="modal-title" id="code-modal-title" style="text-align:center;">Kod Hazır!</h2>
-    <p style="font-size:.875rem; color:var(--text-lo); margin-bottom:20px;" id="code-modal-sub">
-      Çocuğun bu kodla giriş yapabilir:
-    </p>
-    <div id="code-display" style="
-      font-family: var(--font-display);
-      font-size: 2.25rem;
-      font-weight: 800;
-      letter-spacing: .2em;
-      color: var(--accent);
-      background: var(--bg2);
-      border: 1px solid var(--border2);
-      border-radius: var(--radius-md);
-      padding: 16px;
-      margin-bottom: 20px;
-    "></div>
-    <p style="font-size:.78rem; color:var(--text-xlo); margin-bottom:20px;" id="code-modal-note">
-      Bu kodu not al. Çocuk ekranında bu kodla giriş yapılır.
-    </p>
+    <div style="font-size:2.5rem;margin-bottom:12px;">🎉</div>
+    <h2 class="modal-title" style="text-align:center;" id="lbl-code-title">Kod Hazır!</h2>
+    <p style="font-size:.875rem;color:var(--text-lo);margin-bottom:20px;" id="lbl-code-sub">Çocuğun bu kodla giriş yapabilir:</p>
+    <div id="code-display" style="font-family:var(--font-display);font-size:2.25rem;font-weight:800;letter-spacing:.2em;color:var(--accent);background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius-md);padding:16px;margin-bottom:20px;"></div>
     <button class="btn btn-primary w-full" onclick="closeCodeModal()" id="lbl-code-done">Tamam</button>
   </div>
 </div>
 
 <!-- Detail Modal -->
 <div class="modal-overlay hidden" id="detail-modal">
-  <div class="modal" style="width:min(680px,94vw); max-height:90vh; overflow-y:auto;">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-      <h2 class="modal-title" style="margin:0;" id="detail-modal-title">Rapor Detayı</h2>
-      <div style="display:flex; gap:8px;">
-        <button class="btn btn-ghost btn-sm" style="color:var(--danger); border-color:var(--danger);" id="btn-del-report">Sil</button>
+  <div class="modal" style="width:min(700px,94vw);max-height:90vh;overflow-y:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+      <h2 class="modal-title" style="margin:0;" id="detail-title">Rapor Detayı</h2>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost btn-sm" style="color:var(--danger);border-color:var(--danger);" id="btn-del-report">Sil</button>
         <button class="btn btn-ghost btn-sm" onclick="document.getElementById('detail-modal').classList.add('hidden')">✕</button>
       </div>
     </div>
     <div class="detail-tabs">
       <button class="dtab active" data-tab="overview" id="dtab-overview">Genel</button>
-      <button class="dtab" data-tab="attention" id="dtab-attention">Dikkat</button>
+      <button class="dtab" data-tab="speed" id="dtab-speed">Hız</button>
       <button class="dtab" data-tab="qa" id="dtab-qa">Sorular</button>
       <button class="dtab" data-tab="analysis" id="dtab-analysis">Analiz</button>
     </div>
     <div class="tab-panel active" id="dp-overview">
-      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-bottom:16px;">
-        <div class="card" style="text-align:center; padding:14px;">
-          <div style="font-size:1.75rem; font-weight:700; color:var(--accent); font-family:var(--font-display);" id="dov-score">—</div>
-          <div style="font-size:.7rem; color:var(--text-lo); margin-top:4px;" id="dov-score-lbl">Genel Skor</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px;">
+        <div class="card" style="text-align:center;padding:14px;">
+          <div style="font-size:1.75rem;font-weight:700;color:var(--accent);font-family:var(--font-display);" id="dov-score">—</div>
+          <div style="font-size:.7rem;color:var(--text-lo);margin-top:4px;" id="dov-score-lbl">Anlama Skoru</div>
         </div>
-        <div class="card" style="text-align:center; padding:14px;">
-          <div style="font-size:1.75rem; font-weight:700; color:var(--success); font-family:var(--font-display);" id="dov-correct">—</div>
-          <div style="font-size:.7rem; color:var(--text-lo); margin-top:4px;" id="dov-correct-lbl">Doğru</div>
+        <div class="card" style="text-align:center;padding:14px;">
+          <div style="font-size:1.75rem;font-weight:700;color:var(--success);font-family:var(--font-display);" id="dov-wpm">—</div>
+          <div style="font-size:.7rem;color:var(--text-lo);margin-top:4px;" id="dov-wpm-lbl">Ort. Kelime/dk</div>
         </div>
-        <div class="card" style="text-align:center; padding:14px;">
-          <div style="font-size:1.75rem; font-weight:700; color:var(--danger); font-family:var(--font-display);" id="dov-wrong">—</div>
-          <div style="font-size:.7rem; color:var(--text-lo); margin-top:4px;" id="dov-wrong-lbl">Yanlış</div>
+        <div class="card" style="text-align:center;padding:14px;">
+          <div style="font-size:1.75rem;font-weight:700;color:var(--accent2);font-family:var(--font-display);" id="dov-pages">—</div>
+          <div style="font-size:.7rem;color:var(--text-lo);margin-top:4px;" id="dov-pages-lbl">Sayfa</div>
         </div>
       </div>
       <div class="chart-wrap"><canvas id="detail-chart"></canvas></div>
     </div>
-    <div class="tab-panel" id="dp-attention">
-      <div id="attn-segs"></div>
+    <div class="tab-panel" id="dp-speed">
+      <p style="font-size:.8125rem;color:var(--text-lo);margin-bottom:16px;" id="lbl-speed-desc">Her sesli okuma segmentinin hızı (kelime/dakika)</p>
+      <div id="speed-segs"></div>
     </div>
-    <div class="tab-panel" id="dp-qa">
-      <div id="qa-list"></div>
-    </div>
-    <div class="tab-panel" id="dp-analysis">
-      <div class="ai-box" id="ai-analysis-text">—</div>
-    </div>
+    <div class="tab-panel" id="dp-qa"><div id="qa-list"></div></div>
+    <div class="tab-panel" id="dp-analysis"><div class="ai-box" id="ai-analysis-text">—</div></div>
   </div>
 </div>
 
 <!-- Secret AI Panel -->
 <div id="secret-trigger"></div>
 <div class="secret-panel" id="secret-panel">
-  <div style="font-size:.72rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--text-xlo); margin-bottom:14px;">⚙ AI Ayarları</div>
+  <div style="font-size:.72rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-xlo);margin-bottom:14px;">⚙ AI Ayarları</div>
   <div class="form-group" style="margin-bottom:10px;">
     <label class="form-label" id="lbl-ai-provider">AI Sağlayıcı</label>
     <select class="form-select" id="sel-ai-provider">
       <option value="openai">OpenAI (GPT-4o mini)</option>
-      <option value="gemini">Google Gemini 1.5</option>
+      <option value="gemini">Google Gemini 1.5 Flash</option>
     </select>
   </div>
   <div class="form-group" style="margin-bottom:14px;">
@@ -424,86 +417,157 @@
 <script src="../firebase.js" type="module"></script>
 <script src="../app.js"></script>
 <script>
-// Değişkenler en üstte
+// pdf.js worker
+if (typeof pdfjsLib !== 'undefined') {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+}
+
 var currentUser = null;
 var parentData  = null;
+var selectedChildId = null;
+var extractedText = '';
+var totalPdfPages = 0;
+var preparedQuestions = [];
 var selectedReportIndex = null;
-var detailChartInstance  = null;
+var detailChartInstance = null;
 var secretClickCount = 0;
 var secretTimer = null;
 
 var T = {
   tr: {
-    childrenTitle: 'Çocuklarım', childrenSub: 'Her çocuk için ayrı oturum ve rapor yönetimi.',
-    addChild: 'Çocuk Ekle', sessionTitle: 'Oturum Ayarları', sessionDur: 'Oturum Süresi (dakika)', saveSess: 'Kaydet',
-    reportsTitle: 'Raporlar', reportsSub: 'Tüm oturum sonuçları.',
-    settingsTitle: 'Ayarlar', settingsSub: 'Hesap ve uygulama tercihleri.',
-    themeTitle: 'Tema', accountTitle: 'Hesap Bilgileri',
-    navChildren: 'Çocuklarım', navReports: 'Raporlar', navSettings: 'Ayarlar', navLogout: 'Çıkış Yap',
-    addChildTitle: 'Çocuk Ekle', childNameLabel: 'Çocuğun Adı', cancelAdd: 'İptal', confirmAdd: 'Ekle ve Kod Oluştur',
-    codeDone: 'Tamam', codeModalTitle: 'Kod Hazır!', codeModalSub: 'Çocuğun bu kodla giriş yapabilir:',
-    codeModalNote: 'Bu kodu not al. Çocuk ekranında bu kodla giriş yapılır.',
-    noReports: 'Henüz rapor yok.', loadingReports: 'Yükleniyor…',
-    correct: 'Doğru', wrong: 'Yanlış', skipped: 'Geçildi',
-    focusGood: 'İyi odak', focusMed: 'Orta dikkat', focusLow: 'Dağınık',
-    yourAnswer: 'Cevabın', correctAnswer: 'Doğru',
-    aiProvider: 'AI Sağlayıcı', aiKey: 'API Anahtarı', saveAI: 'Kaydet',
-    aiSaved: 'AI ayarları kaydedildi', settingsSaved: 'Ayarlar kaydedildi',
-    logout: 'Çıkış', min: 'dk',
-    dtabOverview: 'Genel', dtabAttention: 'Dikkat', dtabQA: 'Sorular', dtabAnalysis: 'Analiz',
-    themeLabels: { default: 'Gece Mavisi', light: 'Açık', forest: 'Orman', sunset: 'Gün Batımı' }
+    navSession:'Oturum Başlat', navChildren:'Çocuklarım', navReports:'Raporlar',
+    navSettings:'Ayarlar', navLogout:'Çıkış Yap',
+    sessionTitle:'Oturum Başlat', sessionSub:'PDF yükle, sayfa aralığı seç, çocuğu seç ve oturumu hazırla.',
+    step1:'PDF Kitap', step2:'Sayfa Aralığı', step3:'Çocuk Seç', step4:'Oturum Süresi',
+    pdfDropTitle:'PDF dosyasını buraya sürükle veya tıkla', pdfDropSub:'Sadece metin bazlı PDF · Maks 50MB',
+    pdfClear:'Kaldır', pageFrom:'Başlangıç Sayfası', pageTo:'Bitiş Sayfası',
+    extract:'Metni Çıkar', pageLimit:'Maksimum 15 sayfa seçebilirsiniz.',
+    preview:'Metin önizleme (ilk 300 karakter):',
+    duration:'Süre (dakika)',
+    prepareTitle:'Oturumu Hazırla', prepareMeta:'PDF metni AI\'a gönderilecek ve sorular hazırlanacak.',
+    btnPrepare:'🤖 Hazırla', preparing:'Hazırlanıyor…',
+    readyTitle:'✅ Oturum Hazır!',
+    readySub:'Sorular üretildi. Çocuğun giriş kodunu paylaş ve okumaya başlamasını söyle.',
+    readyCodeHint:'Bu kodu çocuğuna ver',
+    childrenTitle:'Çocuklarım', childrenSub:'Her çocuk için ayrı giriş kodu.',
+    addChild:'Çocuk Ekle',
+    reportsTitle:'Raporlar', reportsSub:'Tüm oturum sonuçları.',
+    settingsTitle:'Ayarlar', settingsSub:'Hesap ve uygulama tercihleri.',
+    themeTitle:'Tema', accountTitle:'Hesap',
+    addChildTitle:'Çocuk Ekle', childNameLabel:'Çocuğun Adı', cancel:'İptal', addConfirm:'Ekle ve Kod Oluştur',
+    codeTitle:'Kod Hazır!', codeSub:'Çocuğun bu kodla giriş yapabilir:', codeDone:'Tamam',
+    loadingReports:'Yükleniyor…', noReports:'Henüz rapor yok.',
+    dtabOverview:'Genel', dtabSpeed:'Hız', dtabQA:'Sorular', dtabAnalysis:'Analiz',
+    scoreLbl:'Anlama Skoru', wpmLbl:'Ort. Kelime/dk', pagesLbl:'Sayfa',
+    speedDesc:'Her sesli okuma segmentinin hızı (kelime/dakika)',
+    correct:'Doğru', wrong:'Yanlış', skipped:'Geçildi',
+    yourAnswer:'Cevabın', correctAnswer:'Doğru',
+    focusHigh:'Hızlı', focusMed:'Normal', focusLow:'Yavaş',
+    aiProvider:'AI Sağlayıcı', aiKey:'API Anahtarı',
+    aiSaved:'AI ayarları kaydedildi', settingsSaved:'Kaydedildi',
+    logout:'Çıkış', min:'dk',
+    pdfWarn:'Bu PDF\'den metin çıkarılamadı. Taranmış (görüntü bazlı) olabilir.',
+    extracting:'Metin çıkarılıyor…', extractDone:(n)=>`${n} karakter çıkarıldı.`,
+    extractFail:'Metin çıkarılamadı. Taranmış PDF olabilir.',
+    selectChildFirst:'Lütfen bir çocuk seçin.',
+    extractFirst:'Lütfen önce metni çıkarın.',
+    pdfFirst:'Lütfen önce PDF yükleyin.',
+    themeLabels:{ default:'Gece Mavisi', light:'Açık', forest:'Orman', sunset:'Gün Batımı' },
   },
   en: {
-    childrenTitle: 'My Children', childrenSub: 'Separate sessions and reports for each child.',
-    addChild: 'Add Child', sessionTitle: 'Session Settings', sessionDur: 'Session Duration (minutes)', saveSess: 'Save',
-    reportsTitle: 'Reports', reportsSub: 'All session results.',
-    settingsTitle: 'Settings', settingsSub: 'Account and app preferences.',
-    themeTitle: 'Theme', accountTitle: 'Account Info',
-    navChildren: 'My Children', navReports: 'Reports', navSettings: 'Settings', navLogout: 'Log Out',
-    addChildTitle: 'Add Child', childNameLabel: "Child's Name", cancelAdd: 'Cancel', confirmAdd: 'Add & Generate Code',
-    codeDone: 'Done', codeModalTitle: 'Code Ready!', codeModalSub: 'Your child can log in with this code:',
-    codeModalNote: 'Note this code. The child uses it to enter the reading screen.',
-    noReports: 'No reports yet.', loadingReports: 'Loading…',
-    correct: 'Correct', wrong: 'Wrong', skipped: 'Skipped',
-    focusGood: 'Focused', focusMed: 'Moderate', focusLow: 'Distracted',
-    yourAnswer: 'Answer', correctAnswer: 'Correct',
-    aiProvider: 'AI Provider', aiKey: 'API Key', saveAI: 'Save',
-    aiSaved: 'AI settings saved', settingsSaved: 'Settings saved',
-    logout: 'Log Out', min: 'min',
-    dtabOverview: 'Overview', dtabAttention: 'Attention', dtabQA: 'Questions', dtabAnalysis: 'Analysis',
-    themeLabels: { default: 'Night Blue', light: 'Light', forest: 'Forest', sunset: 'Sunset' }
+    navSession:'Start Session', navChildren:'My Children', navReports:'Reports',
+    navSettings:'Settings', navLogout:'Log Out',
+    sessionTitle:'Start Session', sessionSub:'Upload PDF, select page range, choose child and prepare session.',
+    step1:'PDF Book', step2:'Page Range', step3:'Select Child', step4:'Session Duration',
+    pdfDropTitle:'Drag PDF here or click', pdfDropSub:'Text-based PDF only · Max 50MB',
+    pdfClear:'Remove', pageFrom:'Start Page', pageTo:'End Page',
+    extract:'Extract Text', pageLimit:'Maximum 15 pages allowed.',
+    preview:'Text preview (first 300 chars):',
+    duration:'Duration (minutes)',
+    prepareTitle:'Prepare Session', prepareMeta:'PDF text will be sent to AI and questions will be generated.',
+    btnPrepare:'🤖 Prepare', preparing:'Preparing…',
+    readyTitle:'✅ Session Ready!',
+    readySub:'Questions generated. Share the child\'s login code and ask them to start reading.',
+    readyCodeHint:'Give this code to your child',
+    childrenTitle:'My Children', childrenSub:'Separate login code for each child.',
+    addChild:'Add Child',
+    reportsTitle:'Reports', reportsSub:'All session results.',
+    settingsTitle:'Settings', settingsSub:'Account and app preferences.',
+    themeTitle:'Theme', accountTitle:'Account',
+    addChildTitle:'Add Child', childNameLabel:"Child's Name", cancel:'Cancel', addConfirm:'Add & Generate Code',
+    codeTitle:'Code Ready!', codeSub:'Your child can log in with this code:', codeDone:'Done',
+    loadingReports:'Loading…', noReports:'No reports yet.',
+    dtabOverview:'Overview', dtabSpeed:'Speed', dtabQA:'Questions', dtabAnalysis:'Analysis',
+    scoreLbl:'Comprehension', wpmLbl:'Avg Words/min', pagesLbl:'Pages',
+    speedDesc:'Speed per read-aloud segment (words per minute)',
+    correct:'Correct', wrong:'Wrong', skipped:'Skipped',
+    yourAnswer:'Answer', correctAnswer:'Correct',
+    focusHigh:'Fast', focusMed:'Normal', focusLow:'Slow',
+    aiProvider:'AI Provider', aiKey:'API Key',
+    aiSaved:'AI settings saved', settingsSaved:'Saved',
+    logout:'Log Out', min:'min',
+    pdfWarn:'Could not extract text from this PDF. It may be a scanned (image-based) PDF.',
+    extracting:'Extracting text…', extractDone:(n)=>`${n} characters extracted.`,
+    extractFail:'Text extraction failed. May be a scanned PDF.',
+    selectChildFirst:'Please select a child.',
+    extractFirst:'Please extract text first.',
+    pdfFirst:'Please upload a PDF first.',
+    themeLabels:{ default:'Night Blue', light:'Light', forest:'Forest', sunset:'Sunset' },
   }
 };
 
-function t(key) { return T[OdakApp.Lang.get()]?.[key] ?? key; }
+function t(key, ...args) {
+  const val = T[OdakApp.Lang.get()]?.[key];
+  return typeof val === 'function' ? val(...args) : (val ?? key);
+}
 
 function applyTexts() {
-  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  const set = (id, v) => { const e = document.getElementById(id); if(e) e.textContent = v; };
+  set('lbl-nav-session', t('navSession'));
+  set('lbl-nav-children', t('navChildren'));
+  set('lbl-nav-reports', t('navReports'));
+  set('lbl-nav-settings', t('navSettings'));
+  set('lbl-nav-logout', t('navLogout'));
+  set('lbl-session-title', t('sessionTitle'));
+  set('lbl-session-sub', t('sessionSub'));
+  set('lbl-step1', t('step1'));
+  set('lbl-step2', t('step2'));
+  set('lbl-step3', t('step3'));
+  set('lbl-step4', t('step4'));
+  set('lbl-pdf-drop-title', t('pdfDropTitle'));
+  set('lbl-pdf-drop-sub', t('pdfDropSub'));
+  set('lbl-pdf-clear', t('pdfClear'));
+  set('lbl-page-from', t('pageFrom'));
+  set('lbl-page-to', t('pageTo'));
+  set('lbl-extract', t('extract'));
+  set('lbl-page-limit', t('pageLimit'));
+  set('lbl-preview', t('preview'));
+  set('lbl-duration', t('duration'));
+  set('lbl-prepare-title', t('prepareTitle'));
+  set('lbl-prepare-meta', t('prepareMeta'));
+  set('lbl-btn-prepare', t('btnPrepare'));
+  set('lbl-ready-title', t('readyTitle'));
+  set('lbl-ready-sub', t('readySub'));
+  set('lbl-ready-code-hint', t('readyCodeHint'));
   set('lbl-children-title', t('childrenTitle'));
   set('lbl-children-sub', t('childrenSub'));
-  set('lbl-add-child', t('addChild'));
-  set('lbl-session-title', t('sessionTitle'));
-  set('lbl-session-dur', t('sessionDur'));
-  set('lbl-save-session', t('saveSess'));
   set('lbl-reports-title', t('reportsTitle'));
   set('lbl-reports-sub', t('reportsSub'));
   set('lbl-settings-title', t('settingsTitle'));
   set('lbl-settings-sub', t('settingsSub'));
   set('lbl-theme-title', t('themeTitle'));
   set('lbl-account-title', t('accountTitle'));
-  set('lbl-nav-children', t('navChildren'));
-  set('lbl-nav-reports', t('navReports'));
-  set('lbl-nav-settings', t('navSettings'));
-  set('lbl-nav-logout', t('navLogout'));
   set('lbl-add-child-title', t('addChildTitle'));
-  set('lbl-child-name-label', t('childNameLabel'));
-  set('lbl-cancel-add', t('cancelAdd'));
-  set('lbl-confirm-add', t('confirmAdd'));
+  set('lbl-child-name', t('childNameLabel'));
+  set('lbl-cancel', t('cancel'));
+  set('lbl-add-confirm', t('addConfirm'));
+  set('lbl-code-title', t('codeTitle'));
+  set('lbl-code-sub', t('codeSub'));
   set('lbl-code-done', t('codeDone'));
   set('lbl-ai-provider', t('aiProvider'));
   set('lbl-ai-key', t('aiKey'));
   set('dtab-overview', t('dtabOverview'));
-  set('dtab-attention', t('dtabAttention'));
+  set('dtab-speed', t('dtabSpeed'));
   set('dtab-qa', t('dtabQA'));
   set('dtab-analysis', t('dtabAnalysis'));
   set('btn-logout', t('logout'));
@@ -511,46 +575,29 @@ function applyTexts() {
 }
 
 async function initParent() {
-  const { Lang, Theme, requireAuth, showToast } = OdakApp;
-  Theme.init();
-  Lang.init();
+  OdakApp.Theme.init();
+  OdakApp.Lang.init();
   applyTexts();
   window.addEventListener('odak:lang:change', applyTexts);
 
-  currentUser = await requireAuth('../auth/index.html');
-  document.getElementById('nav-user-name').textContent =
-    currentUser.displayName || currentUser.email || '';
+  currentUser = await OdakApp.requireAuth('../auth/index.html');
+  document.getElementById('nav-user-name').textContent = currentUser.displayName || currentUser.email || '';
 
-  // Hesap bilgilerini hemen yaz (Firebase'den beklemeye gerek yok)
   document.getElementById('account-info').innerHTML = `
-    <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">
-      <div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:1.1rem;">
-        ${currentUser.photoURL
-          ? `<img src="${currentUser.photoURL}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;">`
-          : '👤'}
-      </div>
-      <div>
-        <div style="font-weight:600;color:var(--text-hi);">${currentUser.displayName || '—'}</div>
-        <div style="font-size:.8rem;color:var(--text-lo);">${currentUser.email || currentUser.phoneNumber || ''}</div>
-      </div>
-    </div>
-    <div style="font-size:.78rem;color:var(--text-xlo);">UID: ${currentUser.uid.substring(0,16)}…</div>`;
+    <div style="font-weight:600;color:var(--text-hi);">${currentUser.displayName || '—'}</div>
+    <div style="font-size:.8rem;color:var(--text-lo);margin-top:2px;">${currentUser.email || currentUser.phoneNumber || ''}</div>`;
 
-  // Firebase bağlantısını bekle + veri çek
   try {
     const fb = await OdakApp.waitForFirebase();
     parentData = await fb.DB.getParent(currentUser.uid);
-    if (!parentData) {
-      // Kullanıcı dokümanı yoksa oluştur
-      parentData = { children: [], sessions: [], settings: { sessionDuration: 20, aiProvider: 'openai', apiKey: '' } };
-    }
   } catch(e) {
-    OdakApp.showToast('Veriler yüklenirken hata: ' + e.message, 'error');
-    parentData = { children: [], sessions: [], settings: { sessionDuration: 20, aiProvider: 'openai', apiKey: '' } };
+    parentData = { children:[], sessions:[], settings:{ sessionDuration:20, aiProvider:'openai', apiKey:'' } };
   }
 
+  setupPDFDrop();
+  loadChildSelectGrid();
   loadChildren();
-  loadSettings();
+  loadAISettings();
   buildThemeOptions();
 
   // Secret panel
@@ -563,19 +610,214 @@ async function initParent() {
       document.getElementById('secret-panel').classList.toggle('open');
     }
   });
-
   document.addEventListener('click', e => {
     const sp = document.getElementById('secret-panel');
     const st = document.getElementById('secret-trigger');
     if (!sp.contains(e.target) && e.target !== st) sp.classList.remove('open');
   });
+
+  // Page range validation
+  document.getElementById('inp-page-from').addEventListener('input', validatePageRange);
+  document.getElementById('inp-page-to').addEventListener('input', validatePageRange);
+}
+
+// ── PDF Drop ──
+function setupPDFDrop() {
+  const drop = document.getElementById('pdf-drop-area');
+  const input = document.getElementById('pdf-file-input');
+
+  drop.addEventListener('click', () => input.click());
+  drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('dragover'); });
+  drop.addEventListener('dragleave', () => drop.classList.remove('dragover'));
+  drop.addEventListener('drop', e => { e.preventDefault(); drop.classList.remove('dragover'); handlePDFFile(e.dataTransfer.files[0]); });
+  input.addEventListener('change', () => handlePDFFile(input.files[0]));
+}
+
+async function handlePDFFile(file) {
+  if (!file || file.type !== 'application/pdf') return;
+  document.getElementById('pdf-name').textContent = file.name;
+  document.getElementById('pdf-meta').textContent = (file.size / 1024 / 1024).toFixed(1) + ' MB';
+  document.getElementById('pdf-drop-area').style.display = 'none';
+  document.getElementById('pdf-info-box').style.display = 'block';
+  document.getElementById('pdf-warn').style.display = 'none';
+  document.getElementById('btn-extract').disabled = false;
+
+  // Sayfa sayısını öğren
+  try {
+    const arr = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arr }).promise;
+    totalPdfPages = pdf.numPages;
+    document.getElementById('pdf-meta').textContent += ` · ${totalPdfPages} sayfa`;
+    document.getElementById('inp-page-to').max = totalPdfPages;
+    document.getElementById('inp-page-to').value = Math.min(10, totalPdfPages);
+    // PDF'i global'de tut
+    window._currentPDF = pdf;
+  } catch(e) {
+    OdakApp.showToast('PDF okunamadı: ' + e.message, 'error');
+  }
+}
+
+function clearPDF() {
+  document.getElementById('pdf-drop-area').style.display = 'block';
+  document.getElementById('pdf-info-box').style.display = 'none';
+  document.getElementById('pdf-file-input').value = '';
+  document.getElementById('btn-extract').disabled = true;
+  document.getElementById('text-preview').style.display = 'none';
+  document.getElementById('extract-status').textContent = '';
+  extractedText = '';
+  window._currentPDF = null;
+  updatePrepareBtn();
+}
+
+function validatePageRange() {
+  const from = parseInt(document.getElementById('inp-page-from').value) || 1;
+  const to   = parseInt(document.getElementById('inp-page-to').value) || 1;
+  const diff = to - from + 1;
+  const warn = document.getElementById('page-limit-warn');
+  if (diff > 15) { warn.classList.add('show'); }
+  else { warn.classList.remove('show'); }
+}
+
+async function extractPages() {
+  const from = parseInt(document.getElementById('inp-page-from').value) || 1;
+  const to   = Math.min(parseInt(document.getElementById('inp-page-to').value) || 10, from + 14);
+  document.getElementById('inp-page-to').value = to;
+
+  if (!window._currentPDF) { OdakApp.showToast(t('pdfFirst'), 'error'); return; }
+
+  const btn = document.getElementById('btn-extract');
+  btn.disabled = true;
+  document.getElementById('extract-status').textContent = t('extracting');
+
+  try {
+    let text = '';
+    for (let i = from; i <= Math.min(to, totalPdfPages); i++) {
+      const page    = await window._currentPDF.getPage(i);
+      const content = await page.getTextContent();
+      const pageText = content.items.map(item => item.str).join(' ');
+      text += `\n[Sayfa ${i}]\n${pageText}`;
+    }
+
+    text = text.trim();
+    if (text.length < 100) {
+      document.getElementById('pdf-warn').style.display = 'block';
+      document.getElementById('extract-status').textContent = t('extractFail');
+      extractedText = '';
+    } else {
+      extractedText = text;
+      document.getElementById('extract-status').textContent = t('extractDone', text.length);
+      document.getElementById('preview-content').textContent = text.substring(0, 300) + '…';
+      document.getElementById('text-preview').style.display = 'block';
+    }
+  } catch(e) {
+    document.getElementById('extract-status').textContent = t('extractFail');
+    OdakApp.showToast(e.message, 'error');
+  }
+
+  btn.disabled = false;
+  updatePrepareBtn();
+}
+
+function updatePrepareBtn() {
+  const ready = extractedText.length > 0 && selectedChildId;
+  document.getElementById('btn-prepare').disabled = !ready;
+}
+
+// ── Child select grid ──
+function loadChildSelectGrid() {
+  const grid = document.getElementById('child-select-grid');
+  const children = parentData?.children || [];
+  grid.innerHTML = '';
+
+  if (!children.length) {
+    grid.innerHTML = `<p style="font-size:.875rem;color:var(--text-lo);">Henüz çocuk eklenmemiş. <a onclick="showSection('children')" style="color:var(--accent);cursor:pointer;">Çocuk ekle</a></p>`;
+    return;
+  }
+
+  children.forEach(child => {
+    const card = document.createElement('div');
+    card.className = 'child-card';
+    card.dataset.id = child.id;
+    const initial = child.name.charAt(0).toUpperCase();
+    card.innerHTML = `
+      <div class="child-avatar">${initial}</div>
+      <div class="child-name">${child.name}</div>
+      <div class="child-code">${child.code}</div>`;
+    card.addEventListener('click', () => {
+      document.querySelectorAll('#child-select-grid .child-card').forEach(c => c.classList.remove('selected'));
+      card.classList.add('selected');
+      selectedChildId = child.id;
+      updatePrepareBtn();
+    });
+    grid.appendChild(card);
+  });
+}
+
+// ── Prepare session ──
+async function prepareSession() {
+  if (!extractedText) { OdakApp.showToast(t('extractFirst'), 'error'); return; }
+  if (!selectedChildId) { OdakApp.showToast(t('selectChildFirst'), 'error'); return; }
+
+  const btn = document.getElementById('btn-prepare');
+  btn.disabled = true;
+  document.getElementById('lbl-btn-prepare').textContent = t('preparing');
+
+  const lang = OdakApp.Lang.get() === 'tr' ? 'Türkçe' : 'English';
+  const settings = parentData?.settings || {};
+  const from = document.getElementById('inp-page-from').value;
+  const to   = document.getElementById('inp-page-to').value;
+
+  const prompt = `Sen eğitimci bir asistansın. Aşağıdaki metin bir kitabın ${from}-${to}. sayfalarından alınmıştır.
+Bu metinden çocukların anlama düzeyini ölçen TAM OLARAK 7 soru üret.
+Dil: ${lang}
+Sorular metne dayalı, açık uçlu ve farklı zorluk seviyelerinde olsun.
+SADECE JSON array döndür, markdown yok:
+[{"question":"...","correctAnswer":"...","difficulty":"easy|medium|hard"}]
+
+METİN:
+${extractedText.substring(0, 6000)}`;
+
+  try {
+    const raw = await OdakApp.callAI(prompt, settings);
+    const cleaned = raw.replace(/```json|```/g, '').trim();
+    preparedQuestions = JSON.parse(cleaned);
+    if (!Array.isArray(preparedQuestions) || !preparedQuestions.length) throw new Error('parse');
+
+    // Soruları ve ayarları Firebase'e kaydet (çocuk okurken kullanacak)
+    const child = (parentData?.children || []).find(c => c.id === selectedChildId);
+    const sessionDuration = parseInt(document.getElementById('inp-duration').value) || 20;
+    const sessionData = {
+      questions: preparedQuestions,
+      pageFrom: from, pageTo: to,
+      sessionDuration, childId: selectedChildId,
+      childName: child?.name || '',
+      preparedAt: new Date().toISOString(),
+      status: 'prepared'
+    };
+
+    const fb = await OdakApp.waitForFirebase();
+    await fb.DB.saveActiveSession(currentUser.uid, child?.code, sessionData);
+
+    // Hazır göster
+    document.getElementById('ready-code').textContent = child?.code || '—';
+    document.getElementById('session-ready-box').style.display = 'block';
+    OdakApp.showToast(OdakApp.Lang.get() === 'tr' ? 'Oturum hazır!' : 'Session ready!', 'success');
+  } catch(e) {
+    OdakApp.showToast(e.message === 'no_api_key' ? t('aiProvider') + ' API key eksik' : e.message, 'error');
+  }
+
+  btn.disabled = false;
+  document.getElementById('lbl-btn-prepare').textContent = t('btnPrepare');
+  updatePrepareBtn();
 }
 
 // ── Section nav ──
 function showSection(name) {
-  ['children', 'reports', 'settings'].forEach(s => {
-    document.getElementById(`section-${s}`).style.display = s === name ? 'block' : 'none';
-    document.getElementById(`nav-${s}-btn`).classList.toggle('active', s === name);
+  ['session','children','reports','settings'].forEach(s => {
+    const sec = document.getElementById(`section-${s}`);
+    const btn = document.getElementById(`nav-${s}-btn`);
+    if (sec) sec.style.display = s === name ? 'block' : 'none';
+    if (btn) btn.classList.toggle('active', s === name);
   });
   if (name === 'reports') loadReports();
 }
@@ -583,32 +825,21 @@ function showSection(name) {
 // ── Children ──
 function loadChildren() {
   const grid = document.getElementById('children-grid');
+  if (!grid) return;
   const children = parentData?.children || [];
   grid.innerHTML = '';
-
   children.forEach(child => {
     const card = document.createElement('div');
     card.className = 'child-card';
     const initial = child.name.charAt(0).toUpperCase();
-    card.innerHTML = `
-      <div class="child-avatar" style="font-size:1.375rem; font-family:var(--font-display); font-weight:700; color:white;">${initial}</div>
-      <div class="child-name">${child.name}</div>
-      <div class="child-code">${child.code}</div>`;
+    card.innerHTML = `<div class="child-avatar">${initial}</div><div class="child-name">${child.name}</div><div class="child-code">${child.code}</div>`;
     grid.appendChild(card);
   });
-
-  // Add button
   const addBtn = document.createElement('div');
   addBtn.className = 'add-child-card';
-  addBtn.innerHTML = `<span style="font-size:1.75rem">＋</span><span style="font-size:.875rem; font-weight:600;">${t('addChild')}</span>`;
-  addBtn.onclick = openAddChild;
+  addBtn.innerHTML = `<span style="font-size:1.75rem">＋</span><span style="font-size:.875rem;font-weight:600;">${t('addChild')}</span>`;
+  addBtn.onclick = () => document.getElementById('add-child-modal').classList.remove('hidden');
   grid.appendChild(addBtn);
-}
-
-function openAddChild() {
-  document.getElementById('inp-child-name').value = '';
-  document.getElementById('add-child-modal').classList.remove('hidden');
-  document.getElementById('inp-child-name').focus();
 }
 
 function closeAddChild() { document.getElementById('add-child-modal').classList.add('hidden'); }
@@ -616,49 +847,28 @@ function closeAddChild() { document.getElementById('add-child-modal').classList.
 async function addChild() {
   const name = document.getElementById('inp-child-name').value.trim();
   if (!name) return;
-
-  const btn = document.getElementById('btn-confirm-add');
-  btn.disabled = true;
-  document.getElementById('lbl-confirm-add').textContent = '…';
-
-  const code = OdakApp.generateChildCode();
+  const code  = OdakApp.generateChildCode();
   const child = { id: Date.now().toString(), name, code, createdAt: new Date().toISOString() };
-
   try {
     const fb = await OdakApp.waitForFirebase();
     await fb.DB.addChild(currentUser.uid, child);
     await fb.DB.registerChildCode(code, currentUser.uid, child.id, name);
     parentData.children = [...(parentData.children || []), child];
     loadChildren();
+    loadChildSelectGrid();
     closeAddChild();
     document.getElementById('code-display').textContent = code;
     document.getElementById('code-modal').classList.remove('hidden');
-  } catch(e) {
-    OdakApp.showToast('Hata: ' + e.message, 'error');
-  } finally {
-    btn.disabled = false;
-    document.getElementById('lbl-confirm-add').textContent = t('confirmAdd');
-  }
+  } catch(e) { OdakApp.showToast(e.message, 'error'); }
 }
 
 function closeCodeModal() { document.getElementById('code-modal').classList.add('hidden'); }
 
-// ── Settings ──
-function loadSettings() {
+// ── AI Settings ──
+function loadAISettings() {
   const s = parentData?.settings || {};
-  document.getElementById('inp-duration').value = s.sessionDuration || 20;
   if (s.aiProvider) document.getElementById('sel-ai-provider').value = s.aiProvider;
   if (s.apiKey) document.getElementById('inp-ai-key').value = s.apiKey;
-}
-
-async function saveSessionSettings() {
-  const dur = parseInt(document.getElementById('inp-duration').value) || 20;
-  try {
-    const fb = await OdakApp.waitForFirebase();
-    parentData.settings = { ...(parentData.settings || {}), sessionDuration: dur };
-    await fb.DB.updateParent(currentUser.uid, { settings: parentData.settings });
-    OdakApp.showToast(t('settingsSaved'), 'success');
-  } catch(e) { OdakApp.showToast(e.message, 'error'); }
 }
 
 async function saveAISettings() {
@@ -677,7 +887,7 @@ async function saveAISettings() {
 function buildThemeOptions() {
   const wrap = document.getElementById('theme-options');
   if (!wrap) return;
-  const colors = { default: '#4F8EF7', light: '#2563EB', forest: '#34D399', sunset: '#FB7185' };
+  const colors = { default:'#4F8EF7', light:'#2563EB', forest:'#34D399', sunset:'#FB7185' };
   const current = OdakApp.Theme.current();
   wrap.innerHTML = '';
   OdakApp.Theme.themes.forEach(th => {
@@ -685,10 +895,7 @@ function buildThemeOptions() {
     dot.className = 'theme-dot' + (th === current ? ' active' : '');
     dot.style.background = colors[th];
     dot.title = t('themeLabels')?.[th] || th;
-    dot.onclick = () => {
-      OdakApp.Theme.apply(th);
-      buildThemeOptions();
-    };
+    dot.onclick = () => { OdakApp.Theme.apply(th); buildThemeOptions(); };
     wrap.appendChild(dot);
   });
 }
@@ -700,7 +907,20 @@ async function loadReports() {
   try {
     const fb = await OdakApp.waitForFirebase();
     const data = await fb.DB.getParent(currentUser.uid);
-    const sessions = ((data && data.sessions) ? data.sessions : []).slice().reverse();
+    let sessions = ((data && data.sessions) ? data.sessions : []);
+
+    // childSessions'dan da çek (çocuk auth olmadan yazdıysa buraya düşer)
+    try {
+      const childSess = await fb.DB.getChildSessionsByParent(currentUser.uid, parentData?.children || []);
+      if (childSess && childSess.length) {
+        // Tekrar eklenmemesi için code+date kombinasyonuna göre filtrele
+        const existingKeys = new Set(sessions.map(s => s.code + '_' + s.date));
+        const newOnes = childSess.filter(s => !existingKeys.has(s.code + '_' + s.date));
+        sessions = [...sessions, ...newOnes];
+      }
+    } catch(e) { /* childSessions okuma hatası — devam et */ }
+
+    sessions = sessions.slice().reverse();
     if (!sessions.length) {
       container.innerHTML = `<div class="empty"><div class="empty-icon">📭</div><div>${t('noReports')}</div></div>`;
       return;
@@ -712,15 +932,16 @@ async function loadReports() {
       const score = s.score ?? 0;
       const sc = score >= 70 ? 'score-hi' : score >= 40 ? 'score-md' : 'score-lo';
       const date = new Date(s.date).toLocaleDateString(OdakApp.Lang.get() === 'tr' ? 'tr-TR' : 'en-GB');
-      const row = document.createElement('div');
+      const wpm  = s.avgWpm ? Math.round(s.avgWpm) + ' k/dk' : '—';
+      const row  = document.createElement('div');
       row.className = 'report-row';
       row.innerHTML = `
         <div class="report-score ${sc}">${score}%</div>
         <div class="report-meta">
-          <div class="report-child">${s.childName || '—'}</div>
-          <div class="report-date">${date} · ${s.durationMinutes || '—'} ${t('min')}</div>
+          <div class="report-child">${s.childName || '—'} · ${wpm}</div>
+          <div class="report-date">${date} · ${s.durationMinutes || '—'} ${t('min')} · S.${s.pageFrom||'?'}-${s.pageTo||'?'}</div>
         </div>
-        <span class="badge badge-blue">${(s.qa || []).length} soru</span>`;
+        <span class="badge badge-blue">${(s.qa||[]).length} soru</span>`;
       row.onclick = () => openDetail(sessions.length - 1 - idx, s);
       list.appendChild(row);
     });
@@ -732,42 +953,41 @@ async function loadReports() {
 
 function openDetail(originalIdx, session) {
   selectedReportIndex = originalIdx;
-  // Overview
   const score = session.score ?? 0;
   document.getElementById('dov-score').textContent = score + '%';
-  const qa = session.qa || [];
-  document.getElementById('dov-correct').textContent = qa.filter(q => q.result === 'correct').length;
-  document.getElementById('dov-wrong').textContent   = qa.filter(q => q.result === 'wrong').length;
+  document.getElementById('dov-wpm').textContent = session.avgWpm ? Math.round(session.avgWpm) : '—';
+  document.getElementById('dov-pages').textContent = `${session.pageFrom||'?'}-${session.pageTo||'?'}`;
+  document.getElementById('dov-score-lbl').textContent = t('scoreLbl');
+  document.getElementById('dov-wpm-lbl').textContent = t('wpmLbl');
+  document.getElementById('dov-pages-lbl').textContent = t('pagesLbl');
 
   // Chart
   if (detailChartInstance) detailChartInstance.destroy();
-  const ctx = document.getElementById('detail-chart').getContext('2d');
+  const qa = session.qa || [];
   const correct = qa.filter(q => q.result === 'correct').length;
   const wrong   = qa.filter(q => q.result === 'wrong').length;
+  const ctx = document.getElementById('detail-chart').getContext('2d');
   detailChartInstance = new Chart(ctx, {
-    type: 'doughnut',
-    data: {
-      labels: [t('correct'), t('wrong'), t('skipped')],
-      datasets: [{ data: [correct, wrong, qa.length - correct - wrong],
-        backgroundColor: ['#34D399','#F87171','#6B7A99'], borderWidth: 0, hoverOffset: 4 }]
-    },
-    options: { responsive:true, maintainAspectRatio:false,
-      plugins: { legend: { position:'right', labels:{ color:'#B8C5E0', font:{ family:'Inter', size:12 }, padding:14 } } },
-      cutout: '68%' }
+    type:'doughnut',
+    data:{ labels:[t('correct'),t('wrong'),t('skipped')], datasets:[{ data:[correct,wrong,qa.length-correct-wrong], backgroundColor:['#34D399','#F87171','#6B7A99'], borderWidth:0 }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'right', labels:{ color:'#B8C5E0', font:{ family:'Inter', size:12 }, padding:14 } } }, cutout:'68%' }
   });
 
-  // Attention
+  // Speed segments
   const segs = session.segments || [];
-  const attn = document.getElementById('attn-segs');
-  attn.innerHTML = segs.length === 0 ? `<p style="color:var(--text-xlo); font-size:.875rem">—</p>` :
+  document.getElementById('lbl-speed-desc').textContent = t('speedDesc');
+  const speedWrap = document.getElementById('speed-segs');
+  speedWrap.innerHTML = segs.length === 0 ? `<p style="color:var(--text-xlo);font-size:.875rem">—</p>` :
     segs.map((s, i) => {
-      const lv = s.attention ?? 50;
-      const cls = lv >= 70 ? '#34D399' : lv >= 40 ? '#FBBF24' : '#F87171';
-      const lbl = lv >= 70 ? t('focusGood') : lv >= 40 ? t('focusMed') : t('focusLow');
-      return `<div class="attn-row">
-        <span class="attn-label">#${i+1} — ${lbl}</span>
-        <div class="attn-bar-wrap"><div class="attn-bar" style="width:${lv}%; background:${cls}"></div></div>
-        <span class="attn-pct">${lv}%</span></div>`;
+      const wpm = s.wpm || 0;
+      const maxWpm = 200;
+      const pct = Math.min(wpm / maxWpm * 100, 100);
+      const color = wpm >= 120 ? '#34D399' : wpm >= 70 ? '#FBBF24' : '#F87171';
+      const label = wpm >= 120 ? t('focusHigh') : wpm >= 70 ? t('focusMed') : t('focusLow');
+      return `<div class="speed-seg-row">
+        <span class="speed-seg-label">#${i+1} — ${label}</span>
+        <div class="speed-bar-wrap"><div class="speed-bar" style="width:${pct}%;background:${color}"></div></div>
+        <span class="speed-pct">${wpm} k/dk</span></div>`;
     }).join('');
 
   // Q&A
@@ -777,19 +997,17 @@ function openDetail(originalIdx, session) {
       : `<span class="badge">${t('skipped')}</span>`;
     return `<div class="qa-card">
       <div class="qa-q">${i+1}. ${q.question}</div>
-      <div class="qa-a">${t('yourAnswer')}: ${q.userAnswer || '—'} ${rb}</div>
-      ${q.correctAnswer ? `<div style="font-size:.75rem; color:var(--text-lo); margin-top:4px;">${t('correctAnswer')}: ${q.correctAnswer}</div>` : ''}
+      <div class="qa-a">${t('yourAnswer')}: ${q.userAnswer||'—'} ${rb}</div>
+      ${q.correctAnswer ? `<div style="font-size:.75rem;color:var(--text-lo);margin-top:4px;">${t('correctAnswer')}: ${q.correctAnswer}</div>` : ''}
     </div>`;
   }).join('');
 
   document.getElementById('ai-analysis-text').textContent = session.aiAnalysis || '—';
 
-  // Reset tabs
   document.querySelectorAll('.dtab').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   document.querySelector('[data-tab="overview"]').classList.add('active');
   document.getElementById('dp-overview').classList.add('active');
-
   document.getElementById('detail-modal').classList.remove('hidden');
 }
 
@@ -822,12 +1040,8 @@ async function doLogout() {
 }
 document.getElementById('btn-logout').onclick = doLogout;
 
-// En sonda çağır — tüm fonksiyonlar tanımlandıktan sonra
-if (typeof window.OdakApp !== 'undefined') {
-  initParent();
-} else {
-  window.addEventListener('odak:app:ready', initParent, { once: true });
-}
+if (typeof window.OdakApp !== 'undefined') { initParent(); }
+else { window.addEventListener('odak:app:ready', initParent, { once:true }); }
 </script>
 </body>
 </html>
