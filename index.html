@@ -245,10 +245,7 @@
 <script src="firebase.js" type="module"></script>
 <script src="app.js"></script>
 <script>
-if (typeof window.OdakApp !== 'undefined') { initPage(); }
-else { window.addEventListener('odak:app:ready', initPage, { once: true }); }
-
-const TX = {
+var TX = {
   tr: {
     eyebrow:'TEKNOFEST 2026 — İnsanlık Yararına Teknolojiler',
     heroTitle:'Çocuğunuz kitabı <span class="highlight">ne kadar anlayarak okuyor?</span>',
@@ -329,6 +326,9 @@ function animateStats() {
   animate('stat-score', 78, '%');
   animate('stat-pages', 8, '');
 }
+
+if (typeof window.OdakApp !== 'undefined') { initPage(); }
+else { window.addEventListener('odak:app:ready', initPage, { once: true }); }
 </script>
 </body>
 </html>
