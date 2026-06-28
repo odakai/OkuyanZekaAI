@@ -180,10 +180,11 @@ async function loadFirebase() {
       return updated;
     },
 
-    async registerChildCode(code, parentUid, childId, childName) {
+    async registerChildCode(code, parentUid, childId, childName, childAge) {
       const token = await getToken();
       await fsSet(`childCodes/${code}`, {
         parentUid, childId, childName,
+        childAge: childAge || 10,
         createdAt: new Date().toISOString()
       }, token);
     },
@@ -203,7 +204,7 @@ async function loadFirebase() {
       const doc = await res.json();
       if (!doc.fields) return null;
       const data = fromFSFields(doc.fields);
-      const { parentUid, childId, childName, activeSession } = data;
+      const { parentUid, childId, childName, activeSession, childAge } = data;
 
       // parentData için token gerekli ama burada Auth olmayabilir
       // Sadece settings'i almak için deneyebiliriz, hata olursa boş dön
@@ -221,7 +222,7 @@ async function loadFirebase() {
         }
       } catch(e) {}
 
-      return { parentUid, childId, childName, activeSession, parentData };
+      return { parentUid, childId, childName, childAge, activeSession, parentData };
     },
 
     // childSessions collection'dan parent'a ait oturumları çek
