@@ -306,6 +306,18 @@
     <div id="section-reports" style="display:none;">
       <div class="page-title" id="lbl-reports-title">Raporlar</div>
       <p class="page-sub" id="lbl-reports-sub">Tüm oturum sonuçları.</p>
+
+      <!-- Gelişim Grafiği -->
+      <div class="card" style="margin-bottom:24px;">
+        <div style="font-family:var(--font-display);font-size:.9375rem;font-weight:600;color:var(--text-hi);margin-bottom:16px;display:flex;align-items:center;gap:8px;">
+          📈 <span id="lbl-progress-chart">Gelişim Grafiği</span>
+          <span style="font-size:.75rem;font-weight:400;color:var(--text-lo);margin-left:4px;" id="lbl-progress-sub">(Son 10 oturum)</span>
+        </div>
+        <div style="position:relative;height:200px;">
+          <canvas id="progress-chart"></canvas>
+        </div>
+      </div>
+
       <div id="reports-list"><div class="empty"><div class="empty-icon">⏳</div><div id="lbl-loading">Yükleniyor…</div></div></div>
     </div>
 
@@ -330,9 +342,18 @@
 <div class="modal-overlay hidden" id="add-child-modal">
   <div class="modal">
     <h2 class="modal-title" id="lbl-add-child-title">Çocuk Ekle</h2>
-    <div class="form-group" style="margin-bottom:20px;">
+    <div class="form-group" style="margin-bottom:14px;">
       <label class="form-label" id="lbl-child-name">Çocuğun Adı</label>
       <input class="form-input" type="text" id="inp-child-name" placeholder="Örn: Ayşe">
+    </div>
+    <div class="form-group" style="margin-bottom:20px;">
+      <label class="form-label" id="lbl-child-age">Yaşı</label>
+      <select class="form-select" id="inp-child-age">
+        <option value="6">6</option><option value="7">7</option><option value="8">8</option>
+        <option value="9">9</option><option value="10" selected>10</option><option value="11">11</option>
+        <option value="12">12</option><option value="13">13</option><option value="14">14</option>
+        <option value="15">15</option><option value="16">16</option><option value="17">17</option><option value="18">18</option>
+      </select>
     </div>
     <div style="display:flex;gap:10px;">
       <button class="btn btn-ghost" style="flex:1;" onclick="closeAddChild()" id="lbl-cancel">İptal</button>
@@ -430,6 +451,7 @@ var totalPdfPages = 0;
 var preparedQuestions = [];
 var selectedReportIndex = null;
 var detailChartInstance = null;
+var progressChartInstance = null;
 var secretClickCount = 0;
 var secretTimer = null;
 
@@ -454,7 +476,7 @@ var T = {
     reportsTitle:'Raporlar', reportsSub:'Tüm oturum sonuçları.',
     settingsTitle:'Ayarlar', settingsSub:'Hesap ve uygulama tercihleri.',
     themeTitle:'Tema', accountTitle:'Hesap',
-    addChildTitle:'Çocuk Ekle', childNameLabel:'Çocuğun Adı', cancel:'İptal', addConfirm:'Ekle ve Kod Oluştur',
+    addChildTitle:'Çocuk Ekle', childNameLabel:'Çocuğun Adı', childAgeLabel:'Yaşı', cancel:'İptal', addConfirm:'Ekle ve Kod Oluştur',
     codeTitle:'Kod Hazır!', codeSub:'Çocuğun bu kodla giriş yapabilir:', codeDone:'Tamam',
     loadingReports:'Yükleniyor…', noReports:'Henüz rapor yok.',
     dtabOverview:'Genel', dtabSpeed:'Hız', dtabQA:'Sorular', dtabAnalysis:'Analiz',
@@ -494,7 +516,7 @@ var T = {
     reportsTitle:'Reports', reportsSub:'All session results.',
     settingsTitle:'Settings', settingsSub:'Account and app preferences.',
     themeTitle:'Theme', accountTitle:'Account',
-    addChildTitle:'Add Child', childNameLabel:"Child's Name", cancel:'Cancel', addConfirm:'Add & Generate Code',
+    addChildTitle:'Add Child', childNameLabel:"Child's Name", childAgeLabel:'Age', cancel:'Cancel', addConfirm:'Add & Generate Code',
     codeTitle:'Code Ready!', codeSub:'Your child can log in with this code:', codeDone:'Done',
     loadingReports:'Loading…', noReports:'No reports yet.',
     dtabOverview:'Overview', dtabSpeed:'Speed', dtabQA:'Questions', dtabAnalysis:'Analysis',
@@ -559,6 +581,7 @@ function applyTexts() {
   set('lbl-account-title', t('accountTitle'));
   set('lbl-add-child-title', t('addChildTitle'));
   set('lbl-child-name', t('childNameLabel'));
+  set('lbl-child-age', t('childAgeLabel'));
   set('lbl-cancel', t('cancel'));
   set('lbl-add-confirm', t('addConfirm'));
   set('lbl-code-title', t('codeTitle'));
@@ -742,6 +765,7 @@ function loadChildSelectGrid() {
     card.innerHTML = `
       <div class="child-avatar">${initial}</div>
       <div class="child-name">${child.name}</div>
+      ${child.age ? `<div style="font-size:.72rem;color:var(--text-lo);margin-bottom:4px;">${child.age} yaş</div>` : ''}
       <div class="child-code">${child.code}</div>`;
     card.addEventListener('click', () => {
       document.querySelectorAll('#child-select-grid .child-card').forEach(c => c.classList.remove('selected'));
@@ -832,7 +856,7 @@ function loadChildren() {
     const card = document.createElement('div');
     card.className = 'child-card';
     const initial = child.name.charAt(0).toUpperCase();
-    card.innerHTML = `<div class="child-avatar">${initial}</div><div class="child-name">${child.name}</div><div class="child-code">${child.code}</div>`;
+    card.innerHTML = `<div class="child-avatar">${initial}</div><div class="child-name">${child.name}</div>${child.age ? `<div style="font-size:.72rem;color:var(--text-lo);margin-bottom:4px;">${child.age} yaş</div>` : ""}<div class="child-code">${child.code}</div>`;
     grid.appendChild(card);
   });
   const addBtn = document.createElement('div');
@@ -846,13 +870,14 @@ function closeAddChild() { document.getElementById('add-child-modal').classList.
 
 async function addChild() {
   const name = document.getElementById('inp-child-name').value.trim();
+  const age  = parseInt(document.getElementById('inp-child-age').value) || 10;
   if (!name) return;
   const code  = OdakApp.generateChildCode();
-  const child = { id: Date.now().toString(), name, code, createdAt: new Date().toISOString() };
+  const child = { id: Date.now().toString(), name, age, code, createdAt: new Date().toISOString() };
   try {
     const fb = await OdakApp.waitForFirebase();
     await fb.DB.addChild(currentUser.uid, child);
-    await fb.DB.registerChildCode(code, currentUser.uid, child.id, name);
+    await fb.DB.registerChildCode(code, currentUser.uid, child.id, name, age);
     parentData.children = [...(parentData.children || []), child];
     loadChildren();
     loadChildSelectGrid();
@@ -946,9 +971,82 @@ async function loadReports() {
       list.appendChild(row);
     });
     container.appendChild(list);
+
+    // Gelişim grafiği — son 10 oturum (kronolojik sıra)
+    drawProgressChart(sessions.slice().reverse().slice(-10));
+
   } catch(e) {
     container.innerHTML = `<div class="empty"><div class="empty-icon">⚠️</div><div>${e.message}</div></div>`;
   }
+}
+
+function drawProgressChart(sessions) {
+  const canvas = document.getElementById('progress-chart');
+  if (!canvas) return;
+  if (progressChartInstance) progressChartInstance.destroy();
+
+  if (!sessions.length) return;
+
+  const labels = sessions.map((s, i) => {
+    const d = new Date(s.date);
+    return `${d.getDate()}/${d.getMonth()+1}`;
+  });
+  const scores = sessions.map(s => s.score ?? 0);
+  const wpms   = sessions.map(s => s.avgWpm ?? 0);
+
+  progressChartInstance = new Chart(canvas.getContext('2d'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: OdakApp.Lang.get() === 'tr' ? 'Anlama Skoru (%)' : 'Comprehension (%)',
+          data: scores,
+          borderColor: '#4F8EF7',
+          backgroundColor: 'rgba(79,142,247,.1)',
+          tension: 0.4,
+          fill: true,
+          pointBackgroundColor: '#4F8EF7',
+          pointRadius: 5,
+          yAxisID: 'y'
+        },
+        {
+          label: OdakApp.Lang.get() === 'tr' ? 'Okuma Hızı (k/dk)' : 'Reading Speed (wpm)',
+          data: wpms,
+          borderColor: '#A78BFA',
+          backgroundColor: 'rgba(167,139,250,.1)',
+          tension: 0.4,
+          fill: false,
+          pointBackgroundColor: '#A78BFA',
+          pointRadius: 5,
+          yAxisID: 'y1'
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { labels: { color: '#B8C5E0', font: { family: 'Inter', size: 11 }, padding: 16 } }
+      },
+      scales: {
+        x: { ticks: { color: '#6B7A99', font: { size: 11 } }, grid: { color: 'rgba(79,142,247,.06)' } },
+        y: {
+          type: 'linear', position: 'left',
+          min: 0, max: 100,
+          ticks: { color: '#4F8EF7', font: { size: 11 } },
+          grid: { color: 'rgba(79,142,247,.06)' }
+        },
+        y1: {
+          type: 'linear', position: 'right',
+          min: 0,
+          ticks: { color: '#A78BFA', font: { size: 11 } },
+          grid: { drawOnChartArea: false }
+        }
+      }
+    }
+  });
 }
 
 function openDetail(originalIdx, session) {
