@@ -5,12 +5,14 @@ const CONFIG = {
   apiKey:    "AIzaSyAa45zU_aIbhdbeDxLhyozDn8vdHy8eaxs",
   authDomain:"odak-ai-6ab3e.firebaseapp.com",
   projectId: "odak-ai-6ab3e",
+  databaseURL:"https://odak-ai-6ab3e-default-rtdb.europe-west1.firebasedatabase.app",
   appId:     "1:344460023439:web:b77a83bb56d0be0b4342fa"
 };
 
 const FB_VER  = "10.12.2";
 const FB_BASE = `https://www.gstatic.com/firebasejs/${FB_VER}`;
 const FS_URL  = `https://firestore.googleapis.com/v1/projects/${CONFIG.projectId}/databases/(default)/documents`;
+const RTDB_URL = CONFIG.databaseURL;
 
 // ── Firestore REST helpers ──
 function toFS(val) {
@@ -76,6 +78,30 @@ async function fsUpdate(path, data, token) {
   });
   if (!res.ok) throw new Error(`Firestore UPDATE ${res.status}: ${await res.text()}`);
   return res.json();
+}
+
+// ── Realtime Database REST helpers (canlı süre takibi için) ──
+async function rtdbSet(path, data, token) {
+  const url = `${RTDB_URL}/${path}.json${token ? `?auth=${token}` : ''}`;
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) throw new Error(`RTDB SET ${res.status}`);
+  return res.json();
+}
+
+async function rtdbGet(path, token) {
+  const url = `${RTDB_URL}/${path}.json${token ? `?auth=${token}` : ''}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`RTDB GET ${res.status}`);
+  return res.json();
+}
+
+async function rtdbDelete(path, token) {
+  const url = `${RTDB_URL}/${path}.json${token ? `?auth=${token}` : ''}`;
+  await fetch(url, { method: 'DELETE' });
 }
 
 // ── Firebase Auth ──
@@ -264,6 +290,37 @@ async function loadFirebase() {
         } catch(e) { /* bu kod için hata, devam et */ }
       }
       return results;
+    },
+
+    // ── Canlı Süre Takibi (Realtime Database) ──
+    // Çocuk oturuma başlayınca çağrılır, her saniye/birkaç saniyede güncellenir
+    async startLiveTimer(code, totalSeconds) {
+      await rtdbSet(`liveSessions/${code}`, {
+        totalSeconds,
+        remainingSeconds: totalSeconds,
+        status: 'reading',
+        startedAt: Date.now()
+      }, null);
+    },
+
+    async updateLiveTimer(code, remainingSeconds, status) {
+      await rtdbSet(`liveSessions/${code}`, {
+        remainingSeconds,
+        status: status || 'reading',
+        updatedAt: Date.now()
+      }, null);
+    },
+
+    async endLiveTimer(code) {
+      await rtdbDelete(`liveSessions/${code}`, null);
+    },
+
+    // Ebeveyn panelinde — kendi çocuklarının canlı durumunu çek
+    async getLiveSession(code) {
+      try {
+        const data = await rtdbGet(`liveSessions/${code}`, null);
+        return data;
+      } catch(e) { return null; }
     },
 
     async saveChildSession(code, session) {
