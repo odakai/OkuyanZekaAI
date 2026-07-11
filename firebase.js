@@ -1,4 +1,4 @@
-/* ─── ODAK-AI · Firebase Module (REST API) ─── */
+/* ─── Okuyan Zeka AI · Firebase Module (by ODAK-AI) ─── */
 (function () {
 
 const CONFIG = {
@@ -119,11 +119,21 @@ async function loadFirebase() {
   const auth = getAuth(app);
   await setPersistence(auth, browserLocalPersistence);
 
+
+  // Token cache — her çağrıda Firebase'e gitmez
+  let _cachedToken = null;
+  let _tokenExpiry = 0;
+
   async function getToken() {
     const user = auth.currentUser;
     if (!user) throw new Error('Giriş yapılmamış');
-    return getIdToken(user, false);
+    const now = Date.now();
+    if (_cachedToken && now < _tokenExpiry) return _cachedToken;
+    _cachedToken = await getIdToken(user, false);
+    _tokenExpiry = now + 55 * 60 * 1000; // 55 dakika cache
+    return _cachedToken;
   }
+
 
   function defaultParent(user, extra) {
     return {
@@ -215,7 +225,6 @@ async function loadFirebase() {
       }, token);
     },
 
-    // Oturum hazırlandığında soruları childCode dokümanına kaydet
     async saveActiveSession(parentUid, code, sessionData) {
       const token = await getToken();
       // childCodes/{code} dokümanına activeSession alanı ekle
@@ -223,7 +232,6 @@ async function loadFirebase() {
     },
 
     async getParentByChildCode(code) {
-      // childCodes token gerektirmez (public read)
       const res = await fetch(`${FS_URL}/childCodes/${code}`);
       if (res.status === 404) return null;
       if (!res.ok) return null;
@@ -232,14 +240,12 @@ async function loadFirebase() {
       const data = fromFSFields(doc.fields);
       const { parentUid, childId, childName, activeSession, childAge } = data;
 
-      // parentData için token gerekli ama burada Auth olmayabilir
       // Sadece settings'i almak için deneyebiliriz, hata olursa boş dön
       let parentData = { settings: { sessionDuration:20, aiProvider:'openai', apiKey:'' } };
       try {
         if (auth.currentUser) {
           parentData = await DB.getParent(parentUid);
         } else {
-          // Auth olmadan sadece public alanları al
           const pRes = await fetch(`${FS_URL}/parents/${parentUid}`);
           if (pRes.ok) {
             const pDoc = await pRes.json();
@@ -256,10 +262,8 @@ async function loadFirebase() {
       const token = await getToken();
       const codes = children.map(c => c.code);
       const results = [];
-      // Her çocuk kodu için childSessions'da arama yap
       for (const code of codes) {
         try {
-          // Firestore REST ile collection query (basit — tüm childSessions'ı çekmek yerine)
           // childSessions/{code}_* pattern — prefix search yok, sadece known docs
           // Alternatif: Firestore query API kullan
           const queryRes = await fetch(`${FS_URL}:runQuery`, {
@@ -293,7 +297,6 @@ async function loadFirebase() {
     },
 
     // ── Canlı Süre Takibi (Realtime Database) ──
-    // Çocuk oturuma başlayınca çağrılır, her saniye/birkaç saniyede güncellenir
     async startLiveTimer(code, totalSeconds) {
       await rtdbSet(`liveSessions/${code}`, {
         totalSeconds,
@@ -324,7 +327,6 @@ async function loadFirebase() {
     },
 
     async saveChildSession(code, session) {
-      // childCodes public read
       const res = await fetch(`${FS_URL}/childCodes/${code}`);
       if (!res.ok) throw new Error('Geçersiz kod');
       const doc  = await res.json();
@@ -338,11 +340,7 @@ async function loadFirebase() {
       await fsSet(`childSessions/${sessionId}`, sessionWithChild, null);
 
       // 2) Parent'ın sessions array'ine de ekle (loadReports için)
-      // Bu işlem için token gerekli ama çocuk auth olmayabilir
-      // Firestore kuralında childSessions collection'ına yazdıktan sonra
-      // parent okuma sırasında childSessions'dan da okuyoruz
       // NOT: loadReports'u childSessions'dan okuyacak şekilde güncellememiz gerekiyor
-      // Şimdilik her ikisine de ekliyoruz, token yoksa sadece childSessions'a
       try {
         if (auth.currentUser) {
           const token  = await getToken();
