@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ODAK-AI — Ebeveyn Paneli</title>
+  <title>Okuyan Zeka AI — Ebeveyn Paneli</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%234F8EF7'/><text y='22' x='7' font-size='18' fill='white'>📖</text></svg>">
   <link rel="stylesheet" href="../style.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -26,6 +26,21 @@
     .main { flex:1; padding:32px; overflow-y:auto; }
     .page-title { font-family:var(--font-display); font-size:1.375rem; font-weight:700; color:var(--text-hi); letter-spacing:-.02em; margin-bottom:4px; }
     .page-sub { font-size:.875rem; color:var(--text-lo); margin-bottom:28px; }
+
+    /* ── Optimize: Tekrar eden inline style'lar için utility class'lar ── */
+    .step-badge {
+      width:22px;height:22px;border-radius:50%;
+      background:var(--accent);color:white;
+      display:inline-flex;align-items:center;justify-content:center;
+      font-size:.72rem;font-weight:700;flex-shrink:0;
+    }
+    .card-stat { text-align:center;padding:14px; }
+    .card-stat-val { font-size:1.75rem;font-weight:700;font-family:var(--font-display); }
+    .card-stat-lbl { font-size:.7rem;color:var(--text-lo);margin-top:4px; }
+    .section-label { font-size:.875rem;font-weight:600;color:var(--text-hi);margin-bottom:14px; }
+    .meta-text { font-size:.8125rem;color:var(--text-lo); }
+    .mini-text { font-size:.78rem;color:var(--text-lo); }
+    .flex-row-wrap { display:flex;align-items:center;gap:12px;flex-wrap:wrap; }
 
     /* PDF Upload */
     .pdf-drop {
@@ -158,11 +173,11 @@
 <body>
 <nav class="nav">
   <a class="nav-brand" href="../index.html">
-    <div class="nav-logo">OA</div><span>ODAK-AI</span>
+    <div class="nav-logo">OA</div><span>Okuyan Zeka AI</span>
   </a>
   <div class="nav-right">
-    <span style="font-size:.8125rem;color:var(--text-lo);" id="nav-user-name"></span>
-    <button class="btn btn-ghost btn-sm" id="btn-logout">Çıkış</button>
+    <span class="meta-text"  id="nav-user-name"></span>
+    <button class="btn btn-ghost btn-sm" id="btn-logout" data-i18n="logout">Çıkış</button>
     <button class="theme-toggle" title="Temayı değiştir">☀️</button>
     <div class="lang-toggle">
       <button class="lang-btn active" data-lang="tr">TR</button>
@@ -173,12 +188,12 @@
 
 <div class="layout">
   <aside class="sidebar">
-    <button class="sidebar-item active" id="nav-session-btn" onclick="showSection('session')">📄 <span id="lbl-nav-session">Oturum Başlat</span></button>
-    <button class="sidebar-item" id="nav-children-btn" onclick="showSection('children')">👨‍👧 <span id="lbl-nav-children">Çocuklarım</span></button>
-    <button class="sidebar-item" id="nav-reports-btn" onclick="showSection('reports')">📊 <span id="lbl-nav-reports">Raporlar</span></button>
-    <button class="sidebar-item" id="nav-settings-btn" onclick="showSection('settings')">⚙️ <span id="lbl-nav-settings">Ayarlar</span></button>
+    <button class="sidebar-item active" id="nav-session-btn" onclick="showSection('session')">📄 <span id="lbl-nav-session" data-i18n="navSession">Oturum Başlat</span></button>
+    <button class="sidebar-item" id="nav-children-btn" onclick="showSection('children')">👨‍👧 <span id="lbl-nav-children" data-i18n="navChildren">Çocuklarım</span></button>
+    <button class="sidebar-item" id="nav-reports-btn" onclick="showSection('reports')">📊 <span id="lbl-nav-reports" data-i18n="navReports">Raporlar</span></button>
+    <button class="sidebar-item" id="nav-settings-btn" onclick="showSection('settings')">⚙️ <span id="lbl-nav-settings" data-i18n="navSettings">Ayarlar</span></button>
     <div class="sidebar-bottom">
-      <button class="sidebar-item" onclick="doLogout()">🚪 <span id="lbl-nav-logout">Çıkış Yap</span></button>
+      <button class="sidebar-item" onclick="doLogout()">🚪 <span id="lbl-nav-logout" data-i18n="navLogout">Çıkış Yap</span></button>
     </div>
   </aside>
 
@@ -186,25 +201,25 @@
 
     <!-- ══ SESSION SECTION ══ -->
     <div id="section-session">
-      <div class="page-title" id="lbl-session-title">Oturum Başlat</div>
-      <p class="page-sub" id="lbl-session-sub">PDF yükle, sayfa aralığı seç, çocuğu seç ve oturumu hazırla.</p>
+      <div class="page-title" id="lbl-session-title" data-i18n="sessionTitle">Oturum Başlat</div>
+      <p class="page-sub" id="lbl-session-sub" data-i18n="sessionSub">PDF yükle, sayfa aralığı seç, çocuğu seç ve oturumu hazırla.</p>
 
       <!-- Step 1: PDF -->
       <div class="card" style="margin-bottom:20px;">
         <div style="font-size:.875rem;font-weight:600;color:var(--text-hi);margin-bottom:16px;display:flex;align-items:center;gap:8px;">
-          <span style="width:22px;height:22px;border-radius:50%;background:var(--accent);color:white;display:inline-flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;">1</span>
-          <span id="lbl-step1">PDF Kitap</span>
+          <span class="step-badge" >1</span>
+          <span id="lbl-step1" data-i18n="step1">PDF Kitap</span>
         </div>
 
         <!-- PDF kaynak seçimi tabları -->
         <div style="display:flex;gap:4px;margin-bottom:16px;background:var(--bg2);border-radius:var(--radius-md);padding:3px;">
           <button class="btn btn-sm active" id="tab-upload" onclick="switchPDFTab('upload')"
             style="flex:1;background:var(--surface);color:var(--text-hi);border:none;">
-            📁 <span id="lbl-tab-upload">Dosya Yükle</span>
+            📁 <span id="lbl-tab-upload" data-i18n="tabUpload">Dosya Yükle</span>
           </button>
           <button class="btn btn-sm" id="tab-link" onclick="switchPDFTab('link')"
             style="flex:1;background:none;color:var(--text-lo);border:none;">
-            🔗 <span id="lbl-tab-link">Link ile Aç</span>
+            🔗 <span id="lbl-tab-link" data-i18n="tabLink">Link ile Aç</span>
           </button>
         </div>
 
@@ -212,8 +227,8 @@
         <div id="pdf-upload-panel">
           <div id="pdf-drop-area" class="pdf-drop">
             <div class="pdf-drop-icon">📄</div>
-            <div class="pdf-drop-title" id="lbl-pdf-drop-title">PDF dosyasını buraya sürükle veya tıkla</div>
-            <div class="pdf-drop-sub" id="lbl-pdf-drop-sub">Sadece metin bazlı PDF · Maks 50MB</div>
+            <div class="pdf-drop-title" id="lbl-pdf-drop-title" data-i18n="pdfDropTitle">PDF dosyasını buraya sürükle veya tıkla</div>
+            <div class="pdf-drop-sub" id="lbl-pdf-drop-sub" data-i18n="pdfDropSub">Sadece metin bazlı PDF · Maks 50MB</div>
             <input type="file" id="pdf-file-input" accept=".pdf" style="display:none;">
           </div>
         </div>
@@ -221,12 +236,12 @@
         <!-- LINK TAB -->
         <div id="pdf-link-panel" style="display:none;">
           <div class="form-group" style="margin-bottom:10px;">
-            <label class="form-label" id="lbl-pdf-url">PDF Linki (URL)</label>
+            <label class="form-label" id="lbl-pdf-url" data-i18n="pdfUrl">PDF Linki (URL)</label>
             <div style="display:flex;gap:8px;">
               <input class="form-input" type="url" id="inp-pdf-url"
                 placeholder="https://... veya Google Drive/GitHub raw link">
               <button class="btn btn-primary btn-sm" onclick="loadPDFFromURL()" id="btn-load-url">
-                <span id="lbl-load-url">Yükle</span>
+                <span id="lbl-load-url" data-i18n="loadUrl">Yükle</span>
               </button>
             </div>
           </div>
@@ -237,7 +252,7 @@
           </div>
           <div id="url-loading" style="display:none;margin-top:12px;display:none;align-items:center;gap:10px;">
             <div class="spinner" style="width:24px;height:24px;border-width:2px;"></div>
-            <span style="font-size:.8125rem;color:var(--text-lo);" id="lbl-url-loading">PDF yükleniyor…</span>
+            <span class="meta-text"  id="lbl-url-loading" data-i18n="urlLoading">PDF yükleniyor…</span>
           </div>
           <div id="url-error" style="display:none;margin-top:10px;padding:10px 14px;background:var(--danger-bg);border:1px solid rgba(248,113,113,.3);border-radius:var(--radius-md);font-size:.8125rem;color:var(--danger);"></div>
         </div>
@@ -250,7 +265,7 @@
               <div class="pdf-info-name" id="pdf-name">—</div>
               <div class="pdf-info-meta" id="pdf-meta">—</div>
             </div>
-            <button class="btn btn-ghost btn-sm" onclick="clearPDF()" style="margin-left:auto;" id="lbl-pdf-clear">Kaldır</button>
+            <button class="btn btn-ghost btn-sm" onclick="clearPDF()" style="margin-left:auto;" id="lbl-pdf-clear" data-i18n="pdfClear">Kaldır</button>
           </div>
           <div id="pdf-warn" style="display:none; margin-top:10px; padding:10px 14px; background:var(--warn-bg); border:1px solid rgba(251,191,36,.3); border-radius:var(--radius-md); font-size:.8125rem; color:var(--warn);">
             ⚠️ <span id="pdf-warn-text">Bu PDF'den metin çıkarılamadı. Taranmış (görüntü bazlı) olabilir.</span>
@@ -261,29 +276,29 @@
       <!-- Step 2: Page range -->
       <div class="card" style="margin-bottom:20px;">
         <div style="font-size:.875rem;font-weight:600;color:var(--text-hi);margin-bottom:16px;display:flex;align-items:center;gap:8px;">
-          <span style="width:22px;height:22px;border-radius:50%;background:var(--accent);color:white;display:inline-flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;">2</span>
-          <span id="lbl-step2">Sayfa Aralığı</span>
+          <span class="step-badge" >2</span>
+          <span id="lbl-step2" data-i18n="step2">Sayfa Aralığı</span>
         </div>
         <div class="page-range-row">
           <div class="form-group">
-            <label class="form-label" id="lbl-page-from">Başlangıç Sayfası</label>
+            <label class="form-label" id="lbl-page-from" data-i18n="pageFrom">Başlangıç Sayfası</label>
             <input class="form-input" type="number" id="inp-page-from" min="1" value="1">
           </div>
           <div style="margin-top:24px; color:var(--text-lo);">—</div>
           <div class="form-group">
-            <label class="form-label" id="lbl-page-to">Bitiş Sayfası</label>
+            <label class="form-label" id="lbl-page-to" data-i18n="pageTo">Bitiş Sayfası</label>
             <input class="form-input" type="number" id="inp-page-to" min="1" value="10">
           </div>
           <div style="margin-top:24px;">
             <button class="btn btn-ghost btn-sm" id="btn-extract" onclick="extractPages()" disabled>
-              <span id="lbl-extract">Metni Çıkar</span>
+              <span id="lbl-extract" data-i18n="extract">Metni Çıkar</span>
             </button>
           </div>
         </div>
-        <div class="page-limit-warn" id="page-limit-warn">⚠️ <span id="lbl-page-limit">Maksimum 15 sayfa seçebilirsiniz.</span></div>
+        <div class="page-limit-warn" id="page-limit-warn">⚠️ <span id="lbl-page-limit" data-i18n="pageLimit">Maksimum 15 sayfa seçebilirsiniz.</span></div>
         <div id="extract-status" style="margin-top:10px; font-size:.8125rem; color:var(--text-lo);"></div>
         <div id="text-preview" style="display:none; margin-top:14px;">
-          <div style="font-size:.78rem; color:var(--text-lo); margin-bottom:6px;" id="lbl-preview">Metin önizleme (ilk 300 karakter):</div>
+          <div style="font-size:.78rem; color:var(--text-lo); margin-bottom:6px;" id="lbl-preview" data-i18n="preview">Metin önizleme (ilk 300 karakter):</div>
           <div style="background:var(--bg2); border-radius:var(--radius-md); padding:12px; font-size:.8125rem; color:var(--text-mid); line-height:1.6; max-height:100px; overflow:hidden;" id="preview-content"></div>
         </div>
       </div>
@@ -291,8 +306,8 @@
       <!-- Step 3: Child select -->
       <div class="card" style="margin-bottom:20px;">
         <div style="font-size:.875rem;font-weight:600;color:var(--text-hi);margin-bottom:16px;display:flex;align-items:center;gap:8px;">
-          <span style="width:22px;height:22px;border-radius:50%;background:var(--accent);color:white;display:inline-flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;">3</span>
-          <span id="lbl-step3">Çocuk Seç</span>
+          <span class="step-badge" >3</span>
+          <span id="lbl-step3" data-i18n="step3">Çocuk Seç</span>
         </div>
         <div class="children-grid" id="child-select-grid"></div>
       </div>
@@ -300,12 +315,12 @@
       <!-- Step 4: Duration -->
       <div class="card" style="margin-bottom:20px;">
         <div style="font-size:.875rem;font-weight:600;color:var(--text-hi);margin-bottom:16px;display:flex;align-items:center;gap:8px;">
-          <span style="width:22px;height:22px;border-radius:50%;background:var(--accent);color:white;display:inline-flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;">4</span>
-          <span id="lbl-step4">Oturum Süresi</span>
+          <span class="step-badge" >4</span>
+          <span id="lbl-step4" data-i18n="step4">Oturum Süresi</span>
         </div>
         <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
           <div class="form-group">
-            <label class="form-label" id="lbl-duration">Süre (dakika)</label>
+            <label class="form-label" id="lbl-duration" data-i18n="duration">Süre (dakika)</label>
             <input class="form-input" type="number" id="inp-duration" min="5" max="120" value="20" style="max-width:110px;">
           </div>
         </div>
@@ -314,22 +329,22 @@
       <!-- Prepare button -->
       <div class="session-start-box">
         <div class="session-start-info">
-          <div class="session-start-title" id="lbl-prepare-title">Oturumu Hazırla</div>
-          <div class="session-start-meta" id="lbl-prepare-meta">PDF metni AI'a gönderilecek ve sorular hazırlanacak.</div>
+          <div class="session-start-title" id="lbl-prepare-title" data-i18n="prepareTitle">Oturumu Hazırla</div>
+          <div class="session-start-meta" id="lbl-prepare-meta" data-i18n="prepareMeta">PDF metni AI'a gönderilecek ve sorular hazırlanacak.</div>
         </div>
         <button class="btn btn-primary" id="btn-prepare" onclick="prepareSession()" disabled>
-          <span id="lbl-btn-prepare">🤖 Hazırla</span>
+          <span id="lbl-btn-prepare" data-i18n="btnPrepare">🤖 Hazırla</span>
         </button>
       </div>
 
       <!-- Ready state -->
       <div id="session-ready-box" style="display:none; margin-top:16px;">
         <div style="background:var(--success-bg); border:1px solid rgba(52,211,153,.3); border-radius:var(--radius-lg); padding:20px 24px;">
-          <div style="font-family:var(--font-display); font-size:1rem; font-weight:600; color:var(--success); margin-bottom:4px;" id="lbl-ready-title">✅ Oturum Hazır!</div>
-          <div style="font-size:.8125rem; color:var(--text-mid); margin-bottom:14px;" id="lbl-ready-sub">Sorular üretildi. Çocuğun giriş kodunu paylaş ve okumaya başlamasını söyle.</div>
+          <div style="font-family:var(--font-display); font-size:1rem; font-weight:600; color:var(--success); margin-bottom:4px;" id="lbl-ready-title" data-i18n="readyTitle">✅ Oturum Hazır!</div>
+          <div style="font-size:.8125rem; color:var(--text-mid); margin-bottom:14px;" id="lbl-ready-sub" data-i18n="readySub">Sorular üretildi. Çocuğun giriş kodunu paylaş ve okumaya başlamasını söyle.</div>
           <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
             <div style="font-family:monospace; font-size:1.5rem; font-weight:700; color:var(--accent); background:var(--bg2); border:1px solid var(--border2); padding:8px 20px; border-radius:var(--radius-md);" id="ready-code">—</div>
-            <span style="font-size:.8125rem; color:var(--text-lo);" id="lbl-ready-code-hint">Bu kodu çocuğuna ver</span>
+            <span style="font-size:.8125rem; color:var(--text-lo);" id="lbl-ready-code-hint" data-i18n="readyCodeHint">Bu kodu çocuğuna ver</span>
           </div>
         </div>
       </div>
@@ -339,7 +354,7 @@
         <div class="card" style="border-color:rgba(79,142,247,.3);">
           <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
             <div class="pulse-dot"></div>
-            <span style="font-family:var(--font-display); font-size:.9375rem; font-weight:600; color:var(--text-hi);" id="lbl-live-title">Canlı Oturum</span>
+            <span style="font-family:var(--font-display); font-size:.9375rem; font-weight:600; color:var(--text-hi);" id="lbl-live-title" data-i18n="liveTitle">Canlı Oturum</span>
           </div>
           <div style="display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;">
             <div>
@@ -358,15 +373,15 @@
 
     <!-- ══ CHILDREN SECTION ══ -->
     <div id="section-children" style="display:none;">
-      <div class="page-title" id="lbl-children-title">Çocuklarım</div>
-      <p class="page-sub" id="lbl-children-sub">Her çocuk için ayrı giriş kodu.</p>
+      <div class="page-title" id="lbl-children-title" data-i18n="childrenTitle">Çocuklarım</div>
+      <p class="page-sub" id="lbl-children-sub" data-i18n="childrenSub">Her çocuk için ayrı giriş kodu.</p>
       <div class="children-grid" id="children-grid"></div>
     </div>
 
     <!-- ══ REPORTS SECTION ══ -->
     <div id="section-reports" style="display:none;">
-      <div class="page-title" id="lbl-reports-title">Raporlar</div>
-      <p class="page-sub" id="lbl-reports-sub">Tüm oturum sonuçları.</p>
+      <div class="page-title" id="lbl-reports-title" data-i18n="reportsTitle">Raporlar</div>
+      <p class="page-sub" id="lbl-reports-sub" data-i18n="reportsSub">Tüm oturum sonuçları.</p>
 
       <!-- Gelişim Grafiği -->
       <div class="card" style="margin-bottom:24px;">
@@ -384,14 +399,14 @@
 
     <!-- ══ SETTINGS SECTION ══ -->
     <div id="section-settings" style="display:none;">
-      <div class="page-title" id="lbl-settings-title">Ayarlar</div>
-      <p class="page-sub" id="lbl-settings-sub">Hesap ve uygulama tercihleri.</p>
+      <div class="page-title" id="lbl-settings-title" data-i18n="settingsTitle">Ayarlar</div>
+      <p class="page-sub" id="lbl-settings-sub" data-i18n="settingsSub">Hesap ve uygulama tercihleri.</p>
       <div class="card" style="max-width:520px; margin-bottom:20px;">
-        <div style="font-size:.875rem;font-weight:600;color:var(--text-hi);margin-bottom:14px;" id="lbl-theme-title">Tema</div>
+        <div class="section-label"  id="lbl-theme-title" data-i18n="themeTitle">Tema</div>
         <div class="theme-options" id="theme-options"></div>
       </div>
       <div class="card" style="max-width:520px;">
-        <div style="font-size:.875rem;font-weight:600;color:var(--text-hi);margin-bottom:14px;" id="lbl-account-title">Hesap</div>
+        <div class="section-label"  id="lbl-account-title" data-i18n="accountTitle">Hesap</div>
         <div id="account-info" style="font-size:.875rem; color:var(--text-lo);"></div>
       </div>
     </div>
@@ -402,13 +417,13 @@
 <!-- Add Child Modal -->
 <div class="modal-overlay hidden" id="add-child-modal">
   <div class="modal">
-    <h2 class="modal-title" id="lbl-add-child-title">Çocuk Ekle</h2>
+    <h2 class="modal-title" id="lbl-add-child-title" data-i18n="addChildTitle">Çocuk Ekle</h2>
     <div class="form-group" style="margin-bottom:14px;">
-      <label class="form-label" id="lbl-child-name">Çocuğun Adı</label>
+      <label class="form-label" id="lbl-child-name" data-i18n="childNameLabel">Çocuğun Adı</label>
       <input class="form-input" type="text" id="inp-child-name" placeholder="Örn: Ayşe">
     </div>
     <div class="form-group" style="margin-bottom:20px;">
-      <label class="form-label" id="lbl-child-age">Yaşı</label>
+      <label class="form-label" id="lbl-child-age" data-i18n="childAgeLabel">Yaşı</label>
       <select class="form-select" id="inp-child-age">
         <option value="6">6</option><option value="7">7</option><option value="8">8</option>
         <option value="9">9</option><option value="10" selected>10</option><option value="11">11</option>
@@ -417,8 +432,8 @@
       </select>
     </div>
     <div style="display:flex;gap:10px;">
-      <button class="btn btn-ghost" style="flex:1;" onclick="closeAddChild()" id="lbl-cancel">İptal</button>
-      <button class="btn btn-primary" style="flex:1;" onclick="addChild()"><span id="lbl-add-confirm">Ekle ve Kod Oluştur</span></button>
+      <button class="btn btn-ghost" style="flex:1;" onclick="closeAddChild()" id="lbl-cancel" data-i18n="cancel">İptal</button>
+      <button class="btn btn-primary" style="flex:1;" onclick="addChild()"><span id="lbl-add-confirm" data-i18n="addConfirm">Ekle ve Kod Oluştur</span></button>
     </div>
   </div>
 </div>
@@ -427,10 +442,10 @@
 <div class="modal-overlay hidden" id="code-modal">
   <div class="modal" style="text-align:center;">
     <div style="font-size:2.5rem;margin-bottom:12px;">🎉</div>
-    <h2 class="modal-title" style="text-align:center;" id="lbl-code-title">Kod Hazır!</h2>
-    <p style="font-size:.875rem;color:var(--text-lo);margin-bottom:20px;" id="lbl-code-sub">Çocuğun bu kodla giriş yapabilir:</p>
+    <h2 class="modal-title" style="text-align:center;" id="lbl-code-title" data-i18n="codeTitle">Kod Hazır!</h2>
+    <p style="font-size:.875rem;color:var(--text-lo);margin-bottom:20px;" id="lbl-code-sub" data-i18n="codeSub">Çocuğun bu kodla giriş yapabilir:</p>
     <div id="code-display" style="font-family:var(--font-display);font-size:2.25rem;font-weight:800;letter-spacing:.2em;color:var(--accent);background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius-md);padding:16px;margin-bottom:20px;"></div>
-    <button class="btn btn-primary w-full" onclick="closeCodeModal()" id="lbl-code-done">Tamam</button>
+    <button class="btn btn-primary w-full" onclick="closeCodeModal()" id="lbl-code-done" data-i18n="codeDone">Tamam</button>
   </div>
 </div>
 
@@ -445,22 +460,22 @@
       </div>
     </div>
     <div class="detail-tabs">
-      <button class="dtab active" data-tab="overview" id="dtab-overview">Genel</button>
-      <button class="dtab" data-tab="speed" id="dtab-speed">Hız</button>
-      <button class="dtab" data-tab="qa" id="dtab-qa">Sorular</button>
-      <button class="dtab" data-tab="analysis" id="dtab-analysis">Analiz</button>
+      <button class="dtab active" data-tab="overview" id="dtab-overview" data-i18n="dtabOverview">Genel</button>
+      <button class="dtab" data-tab="speed" id="dtab-speed" data-i18n="dtabSpeed">Hız</button>
+      <button class="dtab" data-tab="qa" id="dtab-qa" data-i18n="dtabQA">Sorular</button>
+      <button class="dtab" data-tab="analysis" id="dtab-analysis" data-i18n="dtabAnalysis">Analiz</button>
     </div>
     <div class="tab-panel active" id="dp-overview">
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px;">
-        <div class="card" style="text-align:center;padding:14px;">
+        <div class="card" class="card-stat" >
           <div style="font-size:1.75rem;font-weight:700;color:var(--accent);font-family:var(--font-display);" id="dov-score">—</div>
           <div style="font-size:.7rem;color:var(--text-lo);margin-top:4px;" id="dov-score-lbl">Anlama Skoru</div>
         </div>
-        <div class="card" style="text-align:center;padding:14px;">
+        <div class="card" class="card-stat" >
           <div style="font-size:1.75rem;font-weight:700;color:var(--success);font-family:var(--font-display);" id="dov-wpm">—</div>
           <div style="font-size:.7rem;color:var(--text-lo);margin-top:4px;" id="dov-wpm-lbl">Ort. Kelime/dk</div>
         </div>
-        <div class="card" style="text-align:center;padding:14px;">
+        <div class="card" class="card-stat" >
           <div style="font-size:1.75rem;font-weight:700;color:var(--accent2);font-family:var(--font-display);" id="dov-pages">—</div>
           <div style="font-size:.7rem;color:var(--text-lo);margin-top:4px;" id="dov-pages-lbl">Sayfa</div>
         </div>
@@ -481,14 +496,15 @@
 <div class="secret-panel" id="secret-panel">
   <div style="font-size:.72rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-xlo);margin-bottom:14px;">⚙ AI Ayarları</div>
   <div class="form-group" style="margin-bottom:10px;">
-    <label class="form-label" id="lbl-ai-provider">AI Sağlayıcı</label>
+    <label class="form-label" id="lbl-ai-provider" data-i18n="aiProvider">AI Sağlayıcı</label>
     <select class="form-select" id="sel-ai-provider">
       <option value="openai">OpenAI (GPT-4o mini)</option>
       <option value="gemini">Google Gemini 1.5 Flash</option>
+      <option value="nvidia">NVIDIA (Llama 3.1 70B) — Ücretsiz</option>
     </select>
   </div>
   <div class="form-group" style="margin-bottom:14px;">
-    <label class="form-label" id="lbl-ai-key">API Anahtarı</label>
+    <label class="form-label" id="lbl-ai-key" data-i18n="aiKey">API Anahtarı</label>
     <input class="form-input" type="password" id="inp-ai-key" placeholder="sk-…">
   </div>
   <button class="btn btn-primary w-full btn-sm" onclick="saveAISettings()" id="btn-save-ai">Kaydet</button>
@@ -617,59 +633,12 @@ function t(key, ...args) {
 }
 
 function applyTexts() {
+
+  // data-i18n attribute'lu elementleri toplu güncelle
+  OdakApp.Lang.applyAll(T);
   const set = (id, v) => { const e = document.getElementById(id); if(e) e.textContent = v; };
-  set('lbl-nav-session', t('navSession'));
-  set('lbl-nav-children', t('navChildren'));
-  set('lbl-nav-reports', t('navReports'));
-  set('lbl-nav-settings', t('navSettings'));
-  set('lbl-nav-logout', t('navLogout'));
-  set('lbl-session-title', t('sessionTitle'));
-  set('lbl-session-sub', t('sessionSub'));
-  set('lbl-step1', t('step1'));
-  set('lbl-step2', t('step2'));
-  set('lbl-step3', t('step3'));
-  set('lbl-step4', t('step4'));
-  set('lbl-pdf-drop-title', t('pdfDropTitle'));
-  set('lbl-pdf-drop-sub', t('pdfDropSub'));
-  set('lbl-pdf-clear', t('pdfClear'));
-  set('lbl-tab-upload', t('tabUpload'));
-  set('lbl-tab-link', t('tabLink'));
-  set('lbl-pdf-url', t('pdfUrl'));
-  set('lbl-load-url', t('loadUrl'));
-  set('lbl-url-loading', t('urlLoading'));
   const hint = document.getElementById('lbl-url-hint');
   if (hint) hint.innerHTML = t('urlHint');
-  set('lbl-page-from', t('pageFrom'));
-  set('lbl-page-to', t('pageTo'));
-  set('lbl-extract', t('extract'));
-  set('lbl-page-limit', t('pageLimit'));
-  set('lbl-preview', t('preview'));
-  set('lbl-duration', t('duration'));
-  set('lbl-prepare-title', t('prepareTitle'));
-  set('lbl-prepare-meta', t('prepareMeta'));
-  set('lbl-btn-prepare', t('btnPrepare'));
-  set('lbl-ready-title', t('readyTitle'));
-  set('lbl-ready-sub', t('readySub'));
-  set('lbl-ready-code-hint', t('readyCodeHint'));
-  set('lbl-live-title', t('liveTitle'));
-  set('lbl-children-title', t('childrenTitle'));
-  set('lbl-children-sub', t('childrenSub'));
-  set('lbl-reports-title', t('reportsTitle'));
-  set('lbl-reports-sub', t('reportsSub'));
-  set('lbl-settings-title', t('settingsTitle'));
-  set('lbl-settings-sub', t('settingsSub'));
-  set('lbl-theme-title', t('themeTitle'));
-  set('lbl-account-title', t('accountTitle'));
-  set('lbl-add-child-title', t('addChildTitle'));
-  set('lbl-child-name', t('childNameLabel'));
-  set('lbl-child-age', t('childAgeLabel'));
-  set('lbl-cancel', t('cancel'));
-  set('lbl-add-confirm', t('addConfirm'));
-  set('lbl-code-title', t('codeTitle'));
-  set('lbl-code-sub', t('codeSub'));
-  set('lbl-code-done', t('codeDone'));
-  set('lbl-ai-provider', t('aiProvider'));
-  set('lbl-ai-key', t('aiKey'));
   set('dtab-overview', t('dtabOverview'));
   set('dtab-speed', t('dtabSpeed'));
   set('dtab-qa', t('dtabQA'));
@@ -980,8 +949,7 @@ ${extractedText.substring(0, 6000)}`;
 
   try {
     const raw = await OdakApp.callAI(prompt, settings);
-    const cleaned = raw.replace(/```json|```/g, '').trim();
-    preparedQuestions = JSON.parse(cleaned);
+    preparedQuestions = OdakApp.parseJSON(raw);
     if (!Array.isArray(preparedQuestions) || !preparedQuestions.length) throw new Error('parse');
 
     // Soruları ve ayarları Firebase'e kaydet (çocuk okurken kullanacak)
