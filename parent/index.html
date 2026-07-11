@@ -3,155 +3,171 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Okuyan Zeka AI — Okuma Ekranı</title>
+  <title>Okuyan Zeka AI — Ebeveyn Paneli</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%234F8EF7'/><text y='22' x='7' font-size='18' fill='white'>📖</text></svg>">
   <link rel="stylesheet" href="../style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
   <style>
-    .phase { display:none; min-height:calc(100vh - var(--nav-h)); }
-    .phase.active { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:32px 24px; }
+    .layout { display:flex; min-height:calc(100vh - var(--nav-h)); }
+    .sidebar {
+      width:220px; background:var(--bg2); border-right:1px solid var(--border);
+      padding:24px 16px; display:flex; flex-direction:column; gap:4px; flex-shrink:0;
+    }
+    .sidebar-item {
+      display:flex; align-items:center; gap:9px; padding:9px 10px;
+      border-radius:var(--radius-sm); font-size:.875rem; font-weight:500;
+      color:var(--text-mid); cursor:pointer; transition:all var(--transition);
+      border:none; background:none; width:100%; text-align:left; font-family:var(--font-body);
+    }
+    .sidebar-item:hover { background:var(--surface); color:var(--text-hi); }
+    .sidebar-item.active { background:rgba(79,142,247,.12); color:var(--accent); }
+    .sidebar-bottom { margin-top:auto; padding-top:16px; border-top:1px solid var(--border); }
+    .main { flex:1; padding:32px; overflow-y:auto; }
+    .page-title { font-family:var(--font-display); font-size:1.375rem; font-weight:700; color:var(--text-hi); letter-spacing:-.02em; margin-bottom:4px; }
+    .page-sub { font-size:.875rem; color:var(--text-lo); margin-bottom:28px; }
 
-    /* Code login */
-    .code-card {
-      background:var(--surface); border:1px solid var(--border2);
-      border-radius:var(--radius-xl); padding:40px;
-      width:min(380px,100%); text-align:center;
-      box-shadow:var(--shadow-card),var(--shadow-glow);
+    /* ── Optimize: Tekrar eden inline style'lar için utility class'lar ── */
+    .step-badge {
+      width:22px;height:22px;border-radius:50%;
+      background:var(--accent);color:white;
+      display:inline-flex;align-items:center;justify-content:center;
+      font-size:.72rem;font-weight:700;flex-shrink:0;
     }
-    .code-icon { font-size:3rem; margin-bottom:16px; }
-    .code-title { font-family:var(--font-display); font-size:1.375rem; font-weight:700; color:var(--text-hi); letter-spacing:-.02em; margin-bottom:6px; }
-    .code-sub { font-size:.875rem; color:var(--text-lo); margin-bottom:28px; }
-    .code-inputs { display:flex; gap:8px; justify-content:center; margin-bottom:20px; }
-    .code-digit {
-      width:44px; height:54px; background:var(--bg2); border:1px solid var(--border);
-      border-radius:var(--radius-md); color:var(--text-hi);
-      font-family:var(--font-display); font-size:1.375rem; font-weight:700;
-      text-align:center; outline:none; text-transform:uppercase;
-      transition:border-color var(--transition),box-shadow var(--transition);
-    }
-    .code-digit:focus { border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-glow); }
-    .code-error { font-size:.8125rem; color:var(--danger); margin-bottom:12px; min-height:20px; }
+    .card-stat { text-align:center;padding:14px; }
+    .card-stat-val { font-size:1.75rem;font-weight:700;font-family:var(--font-display); }
+    .card-stat-lbl { font-size:.7rem;color:var(--text-lo);margin-top:4px; }
+    .section-label { font-size:.875rem;font-weight:600;color:var(--text-hi);margin-bottom:14px; }
+    .meta-text { font-size:.8125rem;color:var(--text-lo); }
+    .mini-text { font-size:.78rem;color:var(--text-lo); }
+    .flex-row-wrap { display:flex;align-items:center;gap:12px;flex-wrap:wrap; }
 
-    /* Start */
-    .start-card {
-      background:var(--surface); border:1px solid var(--border2);
-      border-radius:var(--radius-xl); padding:36px;
-      width:min(400px,100%); text-align:center;
-      box-shadow:var(--shadow-card),var(--shadow-glow);
+    /* PDF Upload */
+    .pdf-drop {
+      border:2px dashed var(--border2); border-radius:var(--radius-lg);
+      padding:40px 24px; text-align:center; cursor:pointer;
+      transition:all var(--transition); background:var(--bg2);
     }
-    .welcome-avatar {
-      width:72px; height:72px; border-radius:50%;
+    .pdf-drop:hover, .pdf-drop.dragover { border-color:var(--accent); background:rgba(79,142,247,.05); }
+    .pdf-drop-icon { font-size:2.5rem; margin-bottom:12px; }
+    .pdf-drop-title { font-family:var(--font-display); font-size:1rem; font-weight:600; color:var(--text-hi); margin-bottom:4px; }
+    .pdf-drop-sub { font-size:.8125rem; color:var(--text-lo); }
+
+    .pdf-info {
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:var(--radius-lg); padding:18px 20px;
+      display:flex; align-items:center; gap:14px;
+    }
+    .pdf-info-icon { font-size:1.75rem; flex-shrink:0; }
+    .pdf-info-name { font-size:.9rem; font-weight:600; color:var(--text-hi); }
+    .pdf-info-meta { font-size:.78rem; color:var(--text-lo); margin-top:2px; }
+
+    /* Page range */
+    .page-range-row { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+    .page-range-row .form-input { max-width:90px; }
+    .page-limit-warn { font-size:.78rem; color:var(--warn); margin-top:6px; display:none; }
+    .page-limit-warn.show { display:block; }
+
+    /* Children */
+    .children-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:16px; margin-bottom:28px; }
+    .child-card {
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:var(--radius-lg); padding:20px 16px; text-align:center;
+      cursor:pointer; transition:all var(--transition);
+    }
+    .child-card:hover { border-color:var(--border2); box-shadow:var(--shadow-glow); transform:translateY(-2px); }
+    .child-card.selected { border-color:var(--accent); background:rgba(79,142,247,.06); }
+    .child-avatar {
+      width:50px; height:50px; border-radius:50%;
       background:linear-gradient(135deg,var(--accent),var(--accent2));
       display:flex; align-items:center; justify-content:center;
-      font-family:var(--font-display); font-size:1.75rem; font-weight:700; color:white;
-      margin:0 auto 16px; box-shadow:0 0 24px var(--accent-glow);
+      font-family:var(--font-display); font-size:1.25rem; font-weight:700; color:white;
+      margin:0 auto 10px;
     }
-    .welcome-name { font-family:var(--font-display); font-size:1.375rem; font-weight:700; color:var(--text-hi); margin-bottom:6px; }
-    .session-pill {
-      display:inline-flex; align-items:center; gap:6px;
-      padding:6px 14px; background:rgba(79,142,247,.1);
-      border:1px solid rgba(79,142,247,.25); border-radius:99px;
-      font-size:.8125rem; color:var(--accent);
-      font-family:var(--font-display); font-weight:600; margin:12px 0 24px;
+    .child-name { font-family:var(--font-display); font-size:.9rem; font-weight:600; color:var(--text-hi); margin-bottom:4px; }
+    .child-code { font-size:.72rem; font-family:monospace; color:var(--text-lo); background:var(--bg2); padding:2px 8px; border-radius:4px; display:inline-block; }
+    .add-child-card {
+      background:var(--surface); border:1px dashed var(--border2);
+      border-radius:var(--radius-lg); padding:20px 16px; text-align:center;
+      cursor:pointer; transition:all var(--transition);
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      gap:8px; color:var(--text-lo); min-height:120px;
     }
-    .safari-warn {
-      background:var(--warn-bg); border:1px solid rgba(251,191,36,.3);
-      border-radius:var(--radius-md); padding:10px 14px;
-      font-size:.8125rem; color:var(--warn); margin-bottom:16px; display:none;
-    }
+    .add-child-card:hover { border-color:var(--accent); color:var(--accent); background:rgba(79,142,247,.04); }
 
-    /* Reading */
-    #phase-reading { justify-content:flex-start; align-items:stretch; padding:0; }
-    .reading-layout { display:flex; flex-direction:column; width:100%; height:calc(100vh - var(--nav-h)); }
-
-    .ral-banner {
-      background:linear-gradient(135deg,var(--accent),var(--accent2));
-      color:white; text-align:center; padding:14px 24px;
-      font-family:var(--font-display); font-size:1rem; font-weight:600;
-      display:flex; align-items:center; justify-content:center; gap:12px;
-      transform:translateY(-100%); transition:transform .3s cubic-bezier(.4,0,.2,1);
-      position:relative; z-index:10;
-    }
-    .ral-banner.show { transform:translateY(0); }
-    .ral-banner.listening { background:linear-gradient(135deg,var(--success),#059669); }
-
-    .timer-bar {
-      display:flex; align-items:center; justify-content:space-between;
-      padding:12px 24px; background:var(--bg2); border-bottom:1px solid var(--border);
-    }
-    .timer-clock { font-family:var(--font-display); font-size:1.125rem; font-weight:700; color:var(--text-hi); }
-    .timer-progress { width:140px; height:5px; background:var(--border); border-radius:99px; overflow:hidden; }
-    .timer-fill { height:100%; background:linear-gradient(90deg,var(--accent),var(--accent2)); border-radius:99px; transition:width 1s linear; }
-
-    .reading-content { flex:1; display:flex; flex-direction:column; align-items:center; padding:24px; overflow-y:auto; }
-    .reading-box {
-      max-width:680px; width:100%; background:var(--surface);
-      border:1px solid var(--border); border-radius:var(--radius-lg); padding:32px;
-      font-size:1.0625rem; line-height:1.9; color:var(--text-hi);
-      font-family:Georgia,'Times New Roman',serif; min-height:50vh; flex:1;
-    }
-    .reading-hint { max-width:680px; width:100%; text-align:center; font-size:.8125rem; color:var(--text-xlo); margin-top:12px; }
-
-    /* Wpm live display */
-    .wpm-live {
-      position:fixed; bottom:24px; right:24px;
+    /* Session start button */
+    .session-start-box {
       background:var(--surface); border:1px solid var(--border2);
-      border-radius:var(--radius-lg); padding:12px 16px; text-align:center;
-      box-shadow:var(--shadow-md); display:none; z-index:50;
+      border-radius:var(--radius-lg); padding:24px;
+      display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;
     }
-    .wpm-val { font-family:var(--font-display); font-size:1.5rem; font-weight:700; color:var(--accent); }
-    .wpm-lbl { font-size:.68rem; color:var(--text-lo); }
+    .session-start-info { flex:1; }
+    .session-start-title { font-family:var(--font-display); font-size:1rem; font-weight:600; color:var(--text-hi); margin-bottom:4px; }
+    .session-start-meta { font-size:.8125rem; color:var(--text-lo); }
 
-    /* Questions */
-    #phase-questions { justify-content:flex-start; align-items:stretch; padding:0; }
-    .questions-layout { width:100%; max-width:600px; margin:0 auto; padding:32px 24px; }
-    .q-counter { font-size:.78rem; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--accent); font-family:var(--font-display); margin-bottom:8px; }
-    .q-progress { height:4px; background:var(--border); border-radius:99px; overflow:hidden; margin-bottom:28px; }
-    .q-fill { height:100%; background:linear-gradient(90deg,var(--accent),var(--accent2)); border-radius:99px; transition:width .4s ease; }
-    .question-box { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); padding:26px; margin-bottom:16px; }
-    .question-text { font-size:1rem; font-weight:500; color:var(--text-hi); line-height:1.65; margin-bottom:16px; }
-    .difficulty-badge { display:inline-block; margin-bottom:10px; }
-    .answer-textarea {
-      width:100%; min-height:96px; background:var(--bg2);
-      border:1px solid var(--border); border-radius:var(--radius-md);
-      color:var(--text-hi); font-size:.9375rem; line-height:1.6;
-      padding:12px; resize:vertical; outline:none;
-      transition:border-color var(--transition),box-shadow var(--transition);
+    /* Reports */
+    .report-list { display:flex; flex-direction:column; gap:12px; }
+    .report-row {
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:var(--radius-lg); padding:18px 20px;
+      display:flex; align-items:center; gap:16px; cursor:pointer; transition:all var(--transition);
     }
-    .answer-textarea:focus { border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-glow); }
-    .answer-textarea::placeholder { color:var(--text-xlo); }
-
-    /* Loading */
-    #phase-loading { text-align:center; }
-    .loading-msg { font-size:1rem; color:var(--text-mid); margin-top:20px; }
-
-    /* Done */
-    #phase-done { text-align:center; }
-    .done-icon { font-size:4rem; margin-bottom:16px; }
-    .done-title { font-family:var(--font-display); font-size:1.5rem; font-weight:700; color:var(--text-hi); margin-bottom:8px; }
-    .done-sub { font-size:.9375rem; color:var(--text-lo); max-width:320px; line-height:1.65; }
-
-    @media(max-width:640px) { .reading-box { padding:20px; font-size:1rem; } }
-
-    /* Çıkış butonu — her zaman görünür */
-    .exit-btn {
-      position:fixed; bottom:24px; left:24px;
-      background:var(--danger-bg); border:1px solid var(--danger);
-      color:var(--danger); border-radius:var(--radius-md);
-      padding:8px 14px; font-size:.8125rem; font-weight:600;
-      font-family:var(--font-display); cursor:pointer;
-      z-index:100; transition:all var(--transition);
-      display:none;
+    .report-row:hover { border-color:var(--border2); }
+    .report-score {
+      width:48px; height:48px; border-radius:50%;
+      display:flex; align-items:center; justify-content:center;
+      font-family:var(--font-display); font-size:.875rem; font-weight:700; flex-shrink:0;
     }
-    .exit-btn:hover { background:var(--danger); color:white; }
-    .exit-btn.visible { display:block; }
+    .score-hi { background:var(--success-bg); color:var(--success); }
+    .score-md { background:var(--warn-bg); color:var(--warn); }
+    .score-lo { background:var(--danger-bg); color:var(--danger); }
+    .report-meta { flex:1; }
+    .report-child { font-size:.875rem; font-weight:600; color:var(--text-hi); }
+    .report-date { font-size:.78rem; color:var(--text-lo); margin-top:2px; }
 
-    /* Sesli okuma sırasında arka plan rengi */
-    body.ral-active { background: rgba(79,142,247,.08) !important; }
-    body.ral-listening { background: rgba(52,211,153,.08) !important; }
-    body.ral-active .reading-layout,
-    body.ral-listening .reading-layout { transition: background .3s ease; }
-    body.ral-active #phase-reading { background: rgba(79,142,247,.05); }
-    body.ral-listening #phase-reading { background: rgba(52,211,153,.05); }
+    /* Detail modal */
+    .detail-tabs { display:flex; gap:2px; border-bottom:1px solid var(--border); margin-bottom:20px; }
+    .dtab {
+      padding:8px 14px; font-size:.8125rem; font-weight:500;
+      border:none; background:none; border-bottom:2px solid transparent;
+      color:var(--text-lo); cursor:pointer; font-family:var(--font-display);
+      transition:all var(--transition); margin-bottom:-1px;
+    }
+    .dtab.active { color:var(--accent); border-bottom-color:var(--accent); }
+    .tab-panel { display:none; }
+    .tab-panel.active { display:block; }
+
+    .speed-seg-row { display:flex; align-items:center; gap:10px; font-size:.8125rem; margin-bottom:8px; }
+    .speed-seg-label { min-width:100px; color:var(--text-mid); }
+    .speed-bar-wrap { flex:1; height:7px; background:var(--bg2); border-radius:99px; overflow:hidden; }
+    .speed-bar { height:100%; border-radius:99px; }
+    .speed-pct { min-width:60px; text-align:right; font-family:monospace; font-size:.72rem; color:var(--text-lo); }
+
+    .qa-card { border:1px solid var(--border); border-radius:var(--radius-md); padding:14px; margin-bottom:10px; }
+    .qa-q { font-size:.875rem; font-weight:500; color:var(--text-hi); margin-bottom:8px; }
+    .qa-a { font-size:.8125rem; color:var(--text-mid); }
+    .ai-box { background:var(--bg2); border-radius:var(--radius-md); padding:16px; font-size:.875rem; line-height:1.75; white-space:pre-wrap; color:var(--text-mid); }
+    .chart-wrap { height:180px; position:relative; }
+
+    /* Settings */
+    .theme-options { display:flex; gap:10px; flex-wrap:wrap; margin-top:8px; }
+    .theme-dot { width:32px; height:32px; border-radius:50%; border:2px solid transparent; cursor:pointer; transition:all var(--transition); }
+    .theme-dot.active { border-color:var(--accent); transform:scale(1.15); }
+
+    /* Secret AI */
+    .secret-panel {
+      position:fixed; bottom:56px; left:16px; width:290px;
+      background:var(--surface); border:1px solid var(--border2);
+      border-radius:var(--radius-lg); padding:20px; box-shadow:var(--shadow-lg);
+      z-index:400; display:none;
+    }
+    .secret-panel.open { display:block; }
+    #secret-trigger { position:fixed; bottom:0; left:0; width:44px; height:44px; z-index:401; cursor:default; }
+
+    .empty { text-align:center; padding:48px 24px; color:var(--text-xlo); }
+    .empty-icon { font-size:2.5rem; margin-bottom:12px; }
+
+    @media(max-width:768px) { .sidebar { display:none; } }
   </style>
 </head>
 <body>
@@ -160,7 +176,8 @@
     <div class="nav-logo">OA</div><span>Okuyan Zeka AI</span>
   </a>
   <div class="nav-right">
-    <span style="font-size:.8125rem;color:var(--text-lo);" id="nav-child-name"></span>
+    <span class="meta-text"  id="nav-user-name"></span>
+    <button class="btn btn-ghost btn-sm" id="btn-logout" data-i18n="logout">Çıkış</button>
     <button class="theme-toggle" title="Temayı değiştir">☀️</button>
     <div class="lang-toggle">
       <button class="lang-btn active" data-lang="tr">TR</button>
@@ -169,630 +186,1151 @@
   </div>
 </nav>
 
-<!-- CODE LOGIN -->
-<div class="phase active" id="phase-code">
-  <div class="code-card">
-    <div class="code-icon">🔑</div>
-    <h1 class="code-title" id="lbl-code-title" data-i18n="codeTitle">Giriş Kodu</h1>
-    <p class="code-sub" id="lbl-code-sub" data-i18n="codeSub">Ebeveyninden aldığın 6 haneli kodu gir</p>
-    <div class="code-inputs" id="code-inputs"></div>
-    <div class="code-error" id="code-error"></div>
-    <button class="btn btn-primary w-full" id="btn-enter-code" onclick="submitCode()">
-      <span id="lbl-btn-enter" data-i18n="btnEnter">Giriş Yap</span>
-    </button>
-  </div>
-</div>
-
-<!-- START -->
-<div class="phase" id="phase-start">
-  <div class="start-card">
-    <div class="welcome-avatar" id="welcome-avatar">?</div>
-    <h2 class="welcome-name" id="welcome-name">Merhaba!</h2>
-    <p style="font-size:.875rem;color:var(--text-lo);" id="welcome-sub">Okumaya hazır mısın?</p>
-    <div class="session-pill"><span>⏱</span><span id="session-pill-text">20 dakika</span></div>
-    <div class="safari-warn" id="safari-warn">
-      ⚠️ Safari/iOS'ta ses tanıma çalışmaz. Chrome veya Edge kullanmanı öneririz.
+<div class="layout">
+  <aside class="sidebar">
+    <button class="sidebar-item active" id="nav-session-btn" onclick="showSection('session')">📄 <span id="lbl-nav-session" data-i18n="navSession">Oturum Başlat</span></button>
+    <button class="sidebar-item" id="nav-children-btn" onclick="showSection('children')">👨‍👧 <span id="lbl-nav-children" data-i18n="navChildren">Çocuklarım</span></button>
+    <button class="sidebar-item" id="nav-reports-btn" onclick="showSection('reports')">📊 <span id="lbl-nav-reports" data-i18n="navReports">Raporlar</span></button>
+    <button class="sidebar-item" id="nav-settings-btn" onclick="showSection('settings')">⚙️ <span id="lbl-nav-settings" data-i18n="navSettings">Ayarlar</span></button>
+    <div class="sidebar-bottom">
+      <button class="sidebar-item" onclick="doLogout()">🚪 <span id="lbl-nav-logout" data-i18n="navLogout">Çıkış Yap</span></button>
     </div>
-    <p style="font-size:.8125rem;color:var(--text-xlo);margin-bottom:24px;line-height:1.6;" id="lbl-start-hint" data-i18n="startHint">
-      Oturum sırasında sesli okuman istenecek. Hızın ölçülecek. Bitince sorular gelecek.
-    </p>
-    <button class="btn btn-primary btn-lg w-full" id="btn-start-session" onclick="startSession()">
-      <span id="lbl-btn-start" data-i18n="btnStart">Okumaya Başla</span>
-    </button>
-  </div>
-</div>
+  </aside>
 
-<!-- READING -->
-<div class="phase" id="phase-reading">
-  <div class="reading-layout">
-    <div class="ral-banner" id="ral-banner">
-      <div class="pulse-dot" id="ral-dot" style="display:none;"></div>
-      <span id="ral-text">🔔 Şimdi sesli oku!</span>
-    </div>
-    <div class="timer-bar">
-      <div style="display:flex;align-items:center;gap:16px;">
-        <div class="timer-clock" id="timer-clock">20:00</div>
-        <div class="timer-progress"><div class="timer-fill" id="timer-fill" style="width:100%;"></div></div>
+  <main class="main">
+
+    <!-- ══ SESSION SECTION ══ -->
+    <div id="section-session">
+      <div class="page-title" id="lbl-session-title" data-i18n="sessionTitle">Oturum Başlat</div>
+      <p class="page-sub" id="lbl-session-sub" data-i18n="sessionSub">PDF yükle, sayfa aralığı seç, çocuğu seç ve oturumu hazırla.</p>
+
+      <!-- Step 1: PDF -->
+      <div class="card" style="margin-bottom:20px;">
+        <div style="font-size:.875rem;font-weight:600;color:var(--text-hi);margin-bottom:16px;display:flex;align-items:center;gap:8px;">
+          <span class="step-badge" >1</span>
+          <span id="lbl-step1" data-i18n="step1">PDF Kitap</span>
+        </div>
+
+        <!-- PDF kaynak seçimi tabları -->
+        <div style="display:flex;gap:4px;margin-bottom:16px;background:var(--bg2);border-radius:var(--radius-md);padding:3px;">
+          <button class="btn btn-sm active" id="tab-upload" onclick="switchPDFTab('upload')"
+            style="flex:1;background:var(--surface);color:var(--text-hi);border:none;">
+            📁 <span id="lbl-tab-upload" data-i18n="tabUpload">Dosya Yükle</span>
+          </button>
+          <button class="btn btn-sm" id="tab-link" onclick="switchPDFTab('link')"
+            style="flex:1;background:none;color:var(--text-lo);border:none;">
+            🔗 <span id="lbl-tab-link" data-i18n="tabLink">Link ile Aç</span>
+          </button>
+        </div>
+
+        <!-- UPLOAD TAB -->
+        <div id="pdf-upload-panel">
+          <div id="pdf-drop-area" class="pdf-drop">
+            <div class="pdf-drop-icon">📄</div>
+            <div class="pdf-drop-title" id="lbl-pdf-drop-title" data-i18n="pdfDropTitle">PDF dosyasını buraya sürükle veya tıkla</div>
+            <div class="pdf-drop-sub" id="lbl-pdf-drop-sub" data-i18n="pdfDropSub">Sadece metin bazlı PDF · Maks 50MB</div>
+            <input type="file" id="pdf-file-input" accept=".pdf" style="display:none;">
+          </div>
+        </div>
+
+        <!-- LINK TAB -->
+        <div id="pdf-link-panel" style="display:none;">
+          <div class="form-group" style="margin-bottom:10px;">
+            <label class="form-label" id="lbl-pdf-url" data-i18n="pdfUrl">PDF Linki (URL)</label>
+            <div style="display:flex;gap:8px;">
+              <input class="form-input" type="url" id="inp-pdf-url"
+                placeholder="https://... veya Google Drive/GitHub raw link">
+              <button class="btn btn-primary btn-sm" onclick="loadPDFFromURL()" id="btn-load-url">
+                <span id="lbl-load-url" data-i18n="loadUrl">Yükle</span>
+              </button>
+            </div>
+          </div>
+          <div style="font-size:.75rem;color:var(--text-xlo);line-height:1.6;" id="lbl-url-hint">
+            💡 Google Drive: "Herkesle paylaş" → linki yapıştır<br>
+            💡 GitHub: Raw dosya linkini kullan<br>
+            ⚠️ Bazı siteler CORS engeli nedeniyle yüklenemeyebilir
+          </div>
+          <div id="url-loading" style="display:none;margin-top:12px;display:none;align-items:center;gap:10px;">
+            <div class="spinner" style="width:24px;height:24px;border-width:2px;"></div>
+            <span class="meta-text"  id="lbl-url-loading" data-i18n="urlLoading">PDF yükleniyor…</span>
+          </div>
+          <div id="url-error" style="display:none;margin-top:10px;padding:10px 14px;background:var(--danger-bg);border:1px solid rgba(248,113,113,.3);border-radius:var(--radius-md);font-size:.8125rem;color:var(--danger);"></div>
+        </div>
+
+        <!-- PDF bilgi kutusu (her iki tab için ortak) -->
+        <div id="pdf-info-box" style="display:none; margin-top:14px;">
+          <div class="pdf-info">
+            <div class="pdf-info-icon">📄</div>
+            <div>
+              <div class="pdf-info-name" id="pdf-name">—</div>
+              <div class="pdf-info-meta" id="pdf-meta">—</div>
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="clearPDF()" style="margin-left:auto;" id="lbl-pdf-clear" data-i18n="pdfClear">Kaldır</button>
+          </div>
+          <div id="pdf-warn" style="display:none; margin-top:10px; padding:10px 14px; background:var(--warn-bg); border:1px solid rgba(251,191,36,.3); border-radius:var(--radius-md); font-size:.8125rem; color:var(--warn);">
+            ⚠️ <span id="pdf-warn-text">Bu PDF'den metin çıkarılamadı. Taranmış (görüntü bazlı) olabilir.</span>
+          </div>
+        </div>
       </div>
-      <div class="badge badge-purple" id="seg-badge">0 seg</div>
+
+      <!-- Step 2: Page range -->
+      <div class="card" style="margin-bottom:20px;">
+        <div style="font-size:.875rem;font-weight:600;color:var(--text-hi);margin-bottom:16px;display:flex;align-items:center;gap:8px;">
+          <span class="step-badge" >2</span>
+          <span id="lbl-step2" data-i18n="step2">Sayfa Aralığı</span>
+        </div>
+        <div class="page-range-row">
+          <div class="form-group">
+            <label class="form-label" id="lbl-page-from" data-i18n="pageFrom">Başlangıç Sayfası</label>
+            <input class="form-input" type="number" id="inp-page-from" min="1" value="1">
+          </div>
+          <div style="margin-top:24px; color:var(--text-lo);">—</div>
+          <div class="form-group">
+            <label class="form-label" id="lbl-page-to" data-i18n="pageTo">Bitiş Sayfası</label>
+            <input class="form-input" type="number" id="inp-page-to" min="1" value="10">
+          </div>
+          <div style="margin-top:24px;">
+            <button class="btn btn-ghost btn-sm" id="btn-extract" onclick="extractPages()" disabled>
+              <span id="lbl-extract" data-i18n="extract">Metni Çıkar</span>
+            </button>
+          </div>
+        </div>
+        <div class="page-limit-warn" id="page-limit-warn">⚠️ <span id="lbl-page-limit" data-i18n="pageLimit">Maksimum 15 sayfa seçebilirsiniz.</span></div>
+        <div id="extract-status" style="margin-top:10px; font-size:.8125rem; color:var(--text-lo);"></div>
+        <div id="text-preview" style="display:none; margin-top:14px;">
+          <div style="font-size:.78rem; color:var(--text-lo); margin-bottom:6px;" id="lbl-preview" data-i18n="preview">Metin önizleme (ilk 300 karakter):</div>
+          <div style="background:var(--bg2); border-radius:var(--radius-md); padding:12px; font-size:.8125rem; color:var(--text-mid); line-height:1.6; max-height:100px; overflow:hidden;" id="preview-content"></div>
+        </div>
+      </div>
+
+      <!-- Step 3: Child select -->
+      <div class="card" style="margin-bottom:20px;">
+        <div style="font-size:.875rem;font-weight:600;color:var(--text-hi);margin-bottom:16px;display:flex;align-items:center;gap:8px;">
+          <span class="step-badge" >3</span>
+          <span id="lbl-step3" data-i18n="step3">Çocuk Seç</span>
+        </div>
+        <div class="children-grid" id="child-select-grid"></div>
+      </div>
+
+      <!-- Step 4: Duration -->
+      <div class="card" style="margin-bottom:20px;">
+        <div style="font-size:.875rem;font-weight:600;color:var(--text-hi);margin-bottom:16px;display:flex;align-items:center;gap:8px;">
+          <span class="step-badge" >4</span>
+          <span id="lbl-step4" data-i18n="step4">Oturum Süresi</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+          <div class="form-group">
+            <label class="form-label" id="lbl-duration" data-i18n="duration">Süre (dakika)</label>
+            <input class="form-input" type="number" id="inp-duration" min="5" max="120" value="20" style="max-width:110px;">
+          </div>
+        </div>
+      </div>
+
+      <!-- Prepare button -->
+      <div class="session-start-box">
+        <div class="session-start-info">
+          <div class="session-start-title" id="lbl-prepare-title" data-i18n="prepareTitle">Oturumu Hazırla</div>
+          <div class="session-start-meta" id="lbl-prepare-meta" data-i18n="prepareMeta">PDF metni AI'a gönderilecek ve sorular hazırlanacak.</div>
+        </div>
+        <button class="btn btn-primary" id="btn-prepare" onclick="prepareSession()" disabled>
+          <span id="lbl-btn-prepare" data-i18n="btnPrepare">🤖 Hazırla</span>
+        </button>
+      </div>
+
+      <!-- Ready state -->
+      <div id="session-ready-box" style="display:none; margin-top:16px;">
+        <div style="background:var(--success-bg); border:1px solid rgba(52,211,153,.3); border-radius:var(--radius-lg); padding:20px 24px;">
+          <div style="font-family:var(--font-display); font-size:1rem; font-weight:600; color:var(--success); margin-bottom:4px;" id="lbl-ready-title" data-i18n="readyTitle">✅ Oturum Hazır!</div>
+          <div style="font-size:.8125rem; color:var(--text-mid); margin-bottom:14px;" id="lbl-ready-sub" data-i18n="readySub">Sorular üretildi. Çocuğun giriş kodunu paylaş ve okumaya başlamasını söyle.</div>
+          <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+            <div style="font-family:monospace; font-size:1.5rem; font-weight:700; color:var(--accent); background:var(--bg2); border:1px solid var(--border2); padding:8px 20px; border-radius:var(--radius-md);" id="ready-code">—</div>
+            <span style="font-size:.8125rem; color:var(--text-lo);" id="lbl-ready-code-hint" data-i18n="readyCodeHint">Bu kodu çocuğuna ver</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Canlı Süre Takibi -->
+      <div id="live-timer-box" style="display:none; margin-top:16px;">
+        <div class="card" style="border-color:rgba(79,142,247,.3);">
+          <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
+            <div class="pulse-dot"></div>
+            <span style="font-family:var(--font-display); font-size:.9375rem; font-weight:600; color:var(--text-hi);" id="lbl-live-title" data-i18n="liveTitle">Canlı Oturum</span>
+          </div>
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+            <div>
+              <div style="font-family:var(--font-display); font-size:2rem; font-weight:700; color:var(--accent);" id="live-timer-clock">—:—</div>
+              <div style="font-size:.78rem; color:var(--text-lo); margin-top:4px;" id="live-timer-status">—</div>
+            </div>
+            <div class="timer-progress-wrap" style="flex:1; min-width:140px;">
+              <div style="height:6px; background:var(--border); border-radius:99px; overflow:hidden;">
+                <div id="live-timer-fill" style="height:100%; background:linear-gradient(90deg,var(--accent),var(--accent2)); border-radius:99px; width:100%; transition:width 1s linear;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
-    <div class="reading-content">
-      <div class="reading-box" id="reading-box"></div>
-      <p class="reading-hint" id="lbl-reading-hint" data-i18n="readingHint">Kitabını oku — sesli okuma sinyalini bekliyoruz 🔔</p>
+
+    <!-- ══ CHILDREN SECTION ══ -->
+    <div id="section-children" style="display:none;">
+      <div class="page-title" id="lbl-children-title" data-i18n="childrenTitle">Çocuklarım</div>
+      <p class="page-sub" id="lbl-children-sub" data-i18n="childrenSub">Her çocuk için ayrı giriş kodu.</p>
+      <div class="children-grid" id="children-grid"></div>
     </div>
-  </div>
-  <div class="wpm-live" id="wpm-live">
-    <div class="wpm-val" id="wpm-val">0</div>
-    <div class="wpm-lbl" id="wpm-lbl-el" data-i18n="wpmLbl">kelime/dk</div>
+
+    <!-- ══ REPORTS SECTION ══ -->
+    <div id="section-reports" style="display:none;">
+      <div class="page-title" id="lbl-reports-title" data-i18n="reportsTitle">Raporlar</div>
+      <p class="page-sub" id="lbl-reports-sub" data-i18n="reportsSub">Tüm oturum sonuçları.</p>
+
+      <!-- Gelişim Grafiği -->
+      <div class="card" style="margin-bottom:24px;">
+        <div style="font-family:var(--font-display);font-size:.9375rem;font-weight:600;color:var(--text-hi);margin-bottom:16px;display:flex;align-items:center;gap:8px;">
+          📈 <span id="lbl-progress-chart">Gelişim Grafiği</span>
+          <span style="font-size:.75rem;font-weight:400;color:var(--text-lo);margin-left:4px;" id="lbl-progress-sub">(Son 10 oturum)</span>
+        </div>
+        <div style="position:relative;height:200px;">
+          <canvas id="progress-chart"></canvas>
+        </div>
+      </div>
+
+      <div id="reports-list"><div class="empty"><div class="empty-icon">⏳</div><div id="lbl-loading">Yükleniyor…</div></div></div>
+    </div>
+
+    <!-- ══ SETTINGS SECTION ══ -->
+    <div id="section-settings" style="display:none;">
+      <div class="page-title" id="lbl-settings-title" data-i18n="settingsTitle">Ayarlar</div>
+      <p class="page-sub" id="lbl-settings-sub" data-i18n="settingsSub">Hesap ve uygulama tercihleri.</p>
+      <div class="card" style="max-width:520px; margin-bottom:20px;">
+        <div class="section-label"  id="lbl-theme-title" data-i18n="themeTitle">Tema</div>
+        <div class="theme-options" id="theme-options"></div>
+      </div>
+      <div class="card" style="max-width:520px;">
+        <div class="section-label"  id="lbl-account-title" data-i18n="accountTitle">Hesap</div>
+        <div id="account-info" style="font-size:.875rem; color:var(--text-lo);"></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Add Child Modal -->
+<div class="modal-overlay hidden" id="add-child-modal">
+  <div class="modal">
+    <h2 class="modal-title" id="lbl-add-child-title" data-i18n="addChildTitle">Çocuk Ekle</h2>
+    <div class="form-group" style="margin-bottom:14px;">
+      <label class="form-label" id="lbl-child-name" data-i18n="childNameLabel">Çocuğun Adı</label>
+      <input class="form-input" type="text" id="inp-child-name" placeholder="Örn: Ayşe">
+    </div>
+    <div class="form-group" style="margin-bottom:20px;">
+      <label class="form-label" id="lbl-child-age" data-i18n="childAgeLabel">Yaşı</label>
+      <select class="form-select" id="inp-child-age">
+        <option value="6">6</option><option value="7">7</option><option value="8">8</option>
+        <option value="9">9</option><option value="10" selected>10</option><option value="11">11</option>
+        <option value="12">12</option><option value="13">13</option><option value="14">14</option>
+        <option value="15">15</option><option value="16">16</option><option value="17">17</option><option value="18">18</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-ghost" style="flex:1;" onclick="closeAddChild()" id="lbl-cancel" data-i18n="cancel">İptal</button>
+      <button class="btn btn-primary" style="flex:1;" onclick="addChild()"><span id="lbl-add-confirm" data-i18n="addConfirm">Ekle ve Kod Oluştur</span></button>
+    </div>
   </div>
 </div>
 
-<!-- LOADING -->
-<div class="phase" id="phase-loading">
-  <div class="spinner"></div>
-  <p class="loading-msg" id="lbl-loading-msg">Yükleniyor…</p>
-</div>
-
-<!-- QUESTIONS -->
-<div class="phase" id="phase-questions">
-  <div class="questions-layout">
-    <div class="q-counter" id="q-counter">SORU 1 / 7</div>
-    <div class="q-progress"><div class="q-fill" id="q-fill" style="width:0%"></div></div>
-    <div id="question-wrap"></div>
-    <div style="display:flex;justify-content:flex-end;margin-top:8px;">
-      <button class="btn btn-primary" id="btn-next-q" onclick="nextQuestion()">
-        <span id="lbl-btn-next">Sonraki</span>
-      </button>
-    </div>
+<!-- Code Modal -->
+<div class="modal-overlay hidden" id="code-modal">
+  <div class="modal" style="text-align:center;">
+    <div style="font-size:2.5rem;margin-bottom:12px;">🎉</div>
+    <h2 class="modal-title" style="text-align:center;" id="lbl-code-title" data-i18n="codeTitle">Kod Hazır!</h2>
+    <p style="font-size:.875rem;color:var(--text-lo);margin-bottom:20px;" id="lbl-code-sub" data-i18n="codeSub">Çocuğun bu kodla giriş yapabilir:</p>
+    <div id="code-display" style="font-family:var(--font-display);font-size:2.25rem;font-weight:800;letter-spacing:.2em;color:var(--accent);background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius-md);padding:16px;margin-bottom:20px;"></div>
+    <button class="btn btn-primary w-full" onclick="closeCodeModal()" id="lbl-code-done" data-i18n="codeDone">Tamam</button>
   </div>
 </div>
 
-<!-- DONE -->
-<div class="phase" id="phase-done">
-  <div class="done-icon">🎉</div>
-  <h2 class="done-title" id="lbl-done-title" data-i18n="doneTitle">Harika iş!</h2>
-  <p class="done-sub" id="lbl-done-sub" data-i18n="doneSub">Rapor hazırlandı. Ebeveynin panelden sonuçları görebilir.</p>
-  <a href="../index.html" class="btn btn-ghost" style="margin-top:28px;" id="lbl-done-btn" data-i18n="doneBtn">Ana Sayfa</a>
+<!-- Detail Modal -->
+<div class="modal-overlay hidden" id="detail-modal">
+  <div class="modal" style="width:min(700px,94vw);max-height:90vh;overflow-y:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+      <h2 class="modal-title" style="margin:0;" id="detail-title">Rapor Detayı</h2>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost btn-sm" style="color:var(--danger);border-color:var(--danger);" id="btn-del-report">Sil</button>
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('detail-modal').classList.add('hidden')">✕</button>
+      </div>
+    </div>
+    <div class="detail-tabs">
+      <button class="dtab active" data-tab="overview" id="dtab-overview" data-i18n="dtabOverview">Genel</button>
+      <button class="dtab" data-tab="speed" id="dtab-speed" data-i18n="dtabSpeed">Hız</button>
+      <button class="dtab" data-tab="qa" id="dtab-qa" data-i18n="dtabQA">Sorular</button>
+      <button class="dtab" data-tab="analysis" id="dtab-analysis" data-i18n="dtabAnalysis">Analiz</button>
+    </div>
+    <div class="tab-panel active" id="dp-overview">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px;">
+        <div class="card" class="card-stat" >
+          <div style="font-size:1.75rem;font-weight:700;color:var(--accent);font-family:var(--font-display);" id="dov-score">—</div>
+          <div style="font-size:.7rem;color:var(--text-lo);margin-top:4px;" id="dov-score-lbl">Anlama Skoru</div>
+        </div>
+        <div class="card" class="card-stat" >
+          <div style="font-size:1.75rem;font-weight:700;color:var(--success);font-family:var(--font-display);" id="dov-wpm">—</div>
+          <div style="font-size:.7rem;color:var(--text-lo);margin-top:4px;" id="dov-wpm-lbl">Ort. Kelime/dk</div>
+        </div>
+        <div class="card" class="card-stat" >
+          <div style="font-size:1.75rem;font-weight:700;color:var(--accent2);font-family:var(--font-display);" id="dov-pages">—</div>
+          <div style="font-size:.7rem;color:var(--text-lo);margin-top:4px;" id="dov-pages-lbl">Sayfa</div>
+        </div>
+      </div>
+      <div class="chart-wrap"><canvas id="detail-chart"></canvas></div>
+    </div>
+    <div class="tab-panel" id="dp-speed">
+      <p style="font-size:.8125rem;color:var(--text-lo);margin-bottom:16px;" id="lbl-speed-desc">Her sesli okuma segmentinin hızı (kelime/dakika)</p>
+      <div id="speed-segs"></div>
+    </div>
+    <div class="tab-panel" id="dp-qa"><div id="qa-list"></div></div>
+    <div class="tab-panel" id="dp-analysis"><div class="ai-box" id="ai-analysis-text">—</div></div>
+  </div>
+</div>
+
+<!-- Secret AI Panel -->
+<div id="secret-trigger"></div>
+<div class="secret-panel" id="secret-panel">
+  <div style="font-size:.72rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-xlo);margin-bottom:14px;">⚙ AI Ayarları</div>
+  <div class="form-group" style="margin-bottom:10px;">
+    <label class="form-label" id="lbl-ai-provider" data-i18n="aiProvider">AI Sağlayıcı</label>
+    <select class="form-select" id="sel-ai-provider">
+      <option value="openai">OpenAI (GPT-4o mini)</option>
+      <option value="gemini">Google Gemini 1.5 Flash</option>
+      <option value="nvidia">NVIDIA (Llama 3.1 70B) — Ücretsiz</option>
+    </select>
+  </div>
+  <div class="form-group" style="margin-bottom:14px;">
+    <label class="form-label" id="lbl-ai-key" data-i18n="aiKey">API Anahtarı</label>
+    <input class="form-input" type="password" id="inp-ai-key" placeholder="sk-…">
+  </div>
+  <button class="btn btn-primary w-full btn-sm" onclick="saveAISettings()" id="btn-save-ai">Kaydet</button>
 </div>
 
 <div id="toast-container"></div>
 
-<!-- Sabit çıkış butonu -->
-<button class="exit-btn" id="exit-btn" onclick="exitSession()">
-  🚪 <span id="lbl-exit-btn" data-i18n="exitBtn">Çıkış Yap</span>
-</button>
-
 <script src="../firebase.js" type="module"></script>
 <script src="../app.js"></script>
 <script>
-var childInfo = null;
-var sessionDuration = 20;
-var totalSeconds = 0;
-var elapsedSeconds = 0;
-var timerInterval = null;
-var ralTimeoutId = null;
-var segments = [];
-var questions = [];
-var userAnswers = [];
-var currentQIdx = 0;
-var isListening = false;
-var recognition = null;
+// pdf.js worker
+if (typeof pdfjsLib !== 'undefined') {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+}
 
-var CT = {
+var currentUser = null;
+var parentData  = null;
+var selectedChildId = null;
+var extractedText = '';
+var totalPdfPages = 0;
+var preparedQuestions = [];
+var selectedReportIndex = null;
+var detailChartInstance = null;
+var progressChartInstance = null;
+var secretClickCount = 0;
+var secretTimer = null;
+
+var T = {
   tr: {
-    codeTitle:'Giriş Kodu', codeSub:'Ebeveyninden aldığın 6 haneli kodu gir',
-    btnEnter:'Giriş Yap', codeError:'Geçersiz kod. Tekrar dene.', codeChecking:'Kontrol ediliyor…',
-    welcomeSub:'Okumaya hazır mısın?',
-    startHint:'Oturum sırasında sesli okuman istenecek. Hızın ölçülecek. Bitince sorular gelecek.',
-    btnStart:'Okumaya Başla',
-    readingHint:'Kitabını oku — sesli okuma sinyalini bekliyoruz 🔔',
-    ralPrompt:'🔔 Şimdi sesli oku!', ralListening:'🎙️ Dinleniyor…', ralDone:'✅ Devam et!',
-    loadingQ:'Analiz yapılıyor…',
-    qCounter:(n,total)=>`SORU ${n} / ${total}`,
-    btnNext:'Sonraki', btnSubmit:'Gönder',
-    placeholder:'Cevabını buraya yaz…',
-    doneTitle:'Harika iş!', doneSub:'Rapor hazırlandı. Ebeveynin panelden sonuçları görebilir.',
-    doneBtn:'Ana Sayfa',
-    errorNoAI:'AI yapılandırması eksik.',
-    sessionPill:(m)=>`${m} dakika`,
-    merhaba:(name)=>`Merhaba, ${name}!`,
-    segBadge:(n)=>`${n} seg`,
-    wpmLbl:'kelime/dk',
-    easy:'Kolay', medium:'Orta', hard:'Zor',
-    noSession:'Bu kod için hazırlanmış oturum bulunamadı. Ebeveynin oturumu hazırlamasını bekle.',
-    exitBtn:'Çıkış Yap',
-    exitConfirm:'Çıkmak istediğinden emin misin? Oturum verisi kaydedilmeyecek.',
+    navSession:'Oturum Başlat', navChildren:'Çocuklarım', navReports:'Raporlar',
+    navSettings:'Ayarlar', navLogout:'Çıkış Yap',
+    sessionTitle:'Oturum Başlat', sessionSub:'PDF yükle, sayfa aralığı seç, çocuğu seç ve oturumu hazırla.',
+    step1:'PDF Kitap', step2:'Sayfa Aralığı', step3:'Çocuk Seç', step4:'Oturum Süresi',
+    pdfDropTitle:'PDF dosyasını buraya sürükle veya tıkla', pdfDropSub:'Sadece metin bazlı PDF · Maks 50MB',
+    pdfClear:'Kaldır',
+    tabUpload:'Dosya Yükle', tabLink:'Link ile Aç',
+    pdfUrl:'PDF Linki (URL)', loadUrl:'Yükle',
+    urlHint:'💡 Google Drive: "Herkesle paylaş" → linki yapıştır<br>💡 GitHub: Raw dosya linkini kullan<br>⚠️ Bazı siteler CORS engeli nedeniyle yüklenemeyebilir',
+    urlLoading:'PDF yükleniyor…',
+    urlErrorCors:'CORS engeli: Bu site PDF paylaşımına izin vermiyor. Google Drive veya GitHub raw link deneyin.',
+    urlErrorFetch:'PDF yüklenemedi. Linki kontrol edin.', pageFrom:'Başlangıç Sayfası', pageTo:'Bitiş Sayfası',
+    extract:'Metni Çıkar', pageLimit:'Maksimum 15 sayfa seçebilirsiniz.',
+    preview:'Metin önizleme (ilk 300 karakter):',
+    duration:'Süre (dakika)',
+    prepareTitle:'Oturumu Hazırla', prepareMeta:'PDF metni AI\'a gönderilecek ve sorular hazırlanacak.',
+    btnPrepare:'🤖 Hazırla', preparing:'Hazırlanıyor…',
+    readyTitle:'✅ Oturum Hazır!',
+    readySub:'Sorular üretildi. Çocuğun giriş kodunu paylaş ve okumaya başlamasını söyle.',
+    readyCodeHint:'Bu kodu çocuğuna ver', liveTitle:'Canlı Oturum',
+    childrenTitle:'Çocuklarım', childrenSub:'Her çocuk için ayrı giriş kodu.',
+    addChild:'Çocuk Ekle',
+    reportsTitle:'Raporlar', reportsSub:'Tüm oturum sonuçları.',
+    settingsTitle:'Ayarlar', settingsSub:'Hesap ve uygulama tercihleri.',
+    themeTitle:'Tema', accountTitle:'Hesap',
+    addChildTitle:'Çocuk Ekle', childNameLabel:'Çocuğun Adı', childAgeLabel:'Yaşı', cancel:'İptal', addConfirm:'Ekle ve Kod Oluştur',
+    codeTitle:'Kod Hazır!', codeSub:'Çocuğun bu kodla giriş yapabilir:', codeDone:'Tamam',
+    loadingReports:'Yükleniyor…', noReports:'Henüz rapor yok.',
+    dtabOverview:'Genel', dtabSpeed:'Hız', dtabQA:'Sorular', dtabAnalysis:'Analiz',
+    scoreLbl:'Anlama Skoru', wpmLbl:'Ort. Kelime/dk', pagesLbl:'Sayfa',
+    speedDesc:'Her sesli okuma segmentinin hızı (kelime/dakika)',
+    correct:'Doğru', wrong:'Yanlış', skipped:'Geçildi',
+    yourAnswer:'Cevabın', correctAnswer:'Doğru',
+    focusHigh:'Hızlı', focusMed:'Normal', focusLow:'Yavaş',
+    aiProvider:'AI Sağlayıcı', aiKey:'API Anahtarı',
+    aiSaved:'AI ayarları kaydedildi', settingsSaved:'Kaydedildi',
+    logout:'Çıkış', min:'dk',
+    pdfWarn:'Bu PDF\'den metin çıkarılamadı. Taranmış (görüntü bazlı) olabilir.',
+    extracting:'Metin çıkarılıyor…', extractDone:(n)=>`${n} karakter çıkarıldı.`,
+    extractFail:'Metin çıkarılamadı. Taranmış PDF olabilir.',
+    selectChildFirst:'Lütfen bir çocuk seçin.',
+    extractFirst:'Lütfen önce metni çıkarın.',
+    pdfFirst:'Lütfen önce PDF yükleyin.',
+    themeLabels:{ default:'Gece Mavisi', light:'Açık', forest:'Orman', sunset:'Gün Batımı' },
   },
   en: {
-    codeTitle:'Entry Code', codeSub:'Enter the 6-digit code from your parent',
-    btnEnter:'Enter', codeError:'Invalid code. Try again.', codeChecking:'Checking…',
-    welcomeSub:'Ready to read?',
-    startHint:'During the session you\'ll be asked to read aloud. Your speed will be measured. Questions come at the end.',
-    btnStart:'Start Reading',
-    readingHint:'Read your book — waiting for the read-aloud signal 🔔',
-    ralPrompt:'🔔 Read aloud now!', ralListening:'🎙️ Listening…', ralDone:'✅ Keep going!',
-    loadingQ:'Analysing…',
-    qCounter:(n,total)=>`QUESTION ${n} / ${total}`,
-    btnNext:'Next', btnSubmit:'Submit',
-    placeholder:'Type your answer here…',
-    doneTitle:'Great job!', doneSub:'Report ready. Your parent can view results in the panel.',
-    doneBtn:'Home',
-    errorNoAI:'AI not configured.',
-    sessionPill:(m)=>`${m} minutes`,
-    merhaba:(name)=>`Hello, ${name}!`,
-    segBadge:(n)=>`${n} seg`,
-    wpmLbl:'words/min',
-    easy:'Easy', medium:'Medium', hard:'Hard',
-    noSession:'No prepared session found for this code. Ask your parent to prepare a session first.',
-    exitBtn:'Exit',
-    exitConfirm:'Are you sure you want to exit? Session data will not be saved.',
+    navSession:'Start Session', navChildren:'My Children', navReports:'Reports',
+    navSettings:'Settings', navLogout:'Log Out',
+    sessionTitle:'Start Session', sessionSub:'Upload PDF, select page range, choose child and prepare session.',
+    step1:'PDF Book', step2:'Page Range', step3:'Select Child', step4:'Session Duration',
+    pdfDropTitle:'Drag PDF here or click', pdfDropSub:'Text-based PDF only · Max 50MB',
+    pdfClear:'Remove',
+    tabUpload:'Upload File', tabLink:'Open by Link',
+    pdfUrl:'PDF Link (URL)', loadUrl:'Load',
+    urlHint:'💡 Google Drive: Share publicly → paste link<br>💡 GitHub: Use the Raw file link<br>⚠️ Some sites block cross-origin requests',
+    urlLoading:'Loading PDF…',
+    urlErrorCors:'CORS error: This site does not allow PDF sharing. Try Google Drive or GitHub raw link.',
+    urlErrorFetch:'Could not load PDF. Check the link.', pageFrom:'Start Page', pageTo:'End Page',
+    extract:'Extract Text', pageLimit:'Maximum 15 pages allowed.',
+    preview:'Text preview (first 300 chars):',
+    duration:'Duration (minutes)',
+    prepareTitle:'Prepare Session', prepareMeta:'PDF text will be sent to AI and questions will be generated.',
+    btnPrepare:'🤖 Prepare', preparing:'Preparing…',
+    readyTitle:'✅ Session Ready!',
+    readySub:'Questions generated. Share the child\'s login code and ask them to start reading.',
+    readyCodeHint:'Give this code to your child', liveTitle:'Live Session',
+    childrenTitle:'My Children', childrenSub:'Separate login code for each child.',
+    addChild:'Add Child',
+    reportsTitle:'Reports', reportsSub:'All session results.',
+    settingsTitle:'Settings', settingsSub:'Account and app preferences.',
+    themeTitle:'Theme', accountTitle:'Account',
+    addChildTitle:'Add Child', childNameLabel:"Child's Name", childAgeLabel:'Age', cancel:'Cancel', addConfirm:'Add & Generate Code',
+    codeTitle:'Code Ready!', codeSub:'Your child can log in with this code:', codeDone:'Done',
+    loadingReports:'Loading…', noReports:'No reports yet.',
+    dtabOverview:'Overview', dtabSpeed:'Speed', dtabQA:'Questions', dtabAnalysis:'Analysis',
+    scoreLbl:'Comprehension', wpmLbl:'Avg Words/min', pagesLbl:'Pages',
+    speedDesc:'Speed per read-aloud segment (words per minute)',
+    correct:'Correct', wrong:'Wrong', skipped:'Skipped',
+    yourAnswer:'Answer', correctAnswer:'Correct',
+    focusHigh:'Fast', focusMed:'Normal', focusLow:'Slow',
+    aiProvider:'AI Provider', aiKey:'API Key',
+    aiSaved:'AI settings saved', settingsSaved:'Saved',
+    logout:'Log Out', min:'min',
+    pdfWarn:'Could not extract text from this PDF. It may be a scanned (image-based) PDF.',
+    extracting:'Extracting text…', extractDone:(n)=>`${n} characters extracted.`,
+    extractFail:'Text extraction failed. May be a scanned PDF.',
+    selectChildFirst:'Please select a child.',
+    extractFirst:'Please extract text first.',
+    pdfFirst:'Please upload a PDF first.',
+    themeLabels:{ default:'Night Blue', light:'Light', forest:'Forest', sunset:'Sunset' },
   }
 };
 
 function t(key, ...args) {
-  const val = CT[OdakApp.Lang.get()]?.[key];
+  const val = T[OdakApp.Lang.get()]?.[key];
   return typeof val === 'function' ? val(...args) : (val ?? key);
 }
 
 function applyTexts() {
 
-  OdakApp.Lang.applyAll(CT);
+  // data-i18n attribute'lu elementleri toplu güncelle
+  OdakApp.Lang.applyAll(T);
   const set = (id, v) => { const e = document.getElementById(id); if(e) e.textContent = v; };
-  set('wpm-lbl-el', t('wpmLbl'));
+  const hint = document.getElementById('lbl-url-hint');
+  if (hint) hint.innerHTML = t('urlHint');
+  set('dtab-overview', t('dtabOverview'));
+  set('dtab-speed', t('dtabSpeed'));
+  set('dtab-qa', t('dtabQA'));
+  set('dtab-analysis', t('dtabAnalysis'));
+  set('btn-logout', t('logout'));
+  buildThemeOptions();
 }
 
-function showPhase(id) {
-  document.querySelectorAll('.phase').forEach(p => p.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
-
-  // Çıkış butonu — kod ekranı HARİÇ her yerde görünsün
-  const exitBtn = document.getElementById('exit-btn');
-  if (exitBtn) exitBtn.classList.toggle('visible', id !== 'phase-code');
-
-  // Arka plan temizle
-  document.body.classList.remove('ral-active', 'ral-listening');
-}
-
-function exitSession() {
-  if (!confirm(t('exitConfirm'))) return;
-  // Timers durdur
-  clearInterval(timerInterval);
-  clearTimeout(ralTimeoutId);
-  if (recognition) { try { recognition.stop(); } catch(e) {} }
-  // Canlı süre kaydını sil
-  const code = sessionStorage.getItem('odak_child_code');
-  if (code) {
-    OdakApp.waitForFirebase().then(fb => { fb.DB.endLiveTimer(code).catch(()=>{}); });
-  }
-  // Kodu sil
-  sessionStorage.removeItem('odak_child_code');
-  childInfo = null;
-  segments = [];
-  questions = [];
-  userAnswers = [];
-  elapsedSeconds = 0;
-  // Arka plan sıfırla
-  document.body.classList.remove('ral-active', 'ral-listening');
-  // Kod girişine dön
-  buildCodeInputs();
-  showPhase('phase-code');
-}
-
-function initChild() {
+async function initParent() {
   OdakApp.Theme.init();
   OdakApp.Lang.init();
   applyTexts();
   window.addEventListener('odak:lang:change', applyTexts);
 
-  // Safari uyarısı
-  const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-  if (isSafari) document.getElementById('safari-warn').style.display = 'block';
+  currentUser = await OdakApp.requireAuth('../auth/index.html');
+  document.getElementById('nav-user-name').textContent = currentUser.displayName || currentUser.email || '';
 
-  // Kod input oluştur (Ctrl+V desteği dahil)
-  buildCodeInputs();
-
-  // Önceki oturumdan kod varsa otomatik dene
-  const savedCode = sessionStorage.getItem('odak_child_code');
-  if (savedCode) autoLogin(savedCode);
-}
-
-function buildCodeInputs() {
-  const wrap = document.getElementById('code-inputs');
-  wrap.innerHTML = '';
-
-  for (let i = 0; i < 6; i++) {
-    const inp = document.createElement('input');
-    inp.className = 'code-digit';
-    inp.maxLength = 1;
-    inp.dataset.idx = i;
-    inp.setAttribute('autocomplete', 'off');
-
-    inp.addEventListener('input', e => {
-      e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-      if (e.target.value && i < 5) wrap.children[i+1].focus();
-    });
-
-    inp.addEventListener('keydown', e => {
-      if (e.key === 'Backspace' && !e.target.value && i > 0) wrap.children[i-1].focus();
-      if (e.key === 'Enter') submitCode();
-    });
-
-    // Ctrl+V — tüm kodu yapıştır
-    inp.addEventListener('paste', e => {
-      e.preventDefault();
-      const pasted = (e.clipboardData || window.clipboardData).getData('text')
-        .toUpperCase().replace(/[^A-Z0-9]/g, '').substring(0, 6);
-      for (let j = 0; j < 6; j++) {
-        if (wrap.children[j]) wrap.children[j].value = pasted[j] || '';
-      }
-      const lastFilled = Math.min(pasted.length, 5);
-      wrap.children[lastFilled]?.focus();
-    });
-
-    wrap.appendChild(inp);
-  }
-  wrap.children[0]?.focus();
-}
-
-async function autoLogin(code) {
-  try {
-    const fb = await OdakApp.waitForFirebase();
-    const info = await fb.DB.getParentByChildCode(code);
-    if (info) { childInfo = info; enterStartPhase(); }
-  } catch(e) { /* sessiz */ }
-}
-
-async function submitCode() {
-  const wrap = document.getElementById('code-inputs');
-  const code = Array.from(wrap.children).map(i => i.value).join('').toUpperCase();
-  if (code.length < 6) { document.getElementById('code-error').textContent = t('codeError'); return; }
-
-  document.getElementById('code-error').textContent = '';
-  document.getElementById('btn-enter-code').disabled = true;
-  document.getElementById('lbl-btn-enter').textContent = t('codeChecking');
+  document.getElementById('account-info').innerHTML = `
+    <div style="font-weight:600;color:var(--text-hi);">${currentUser.displayName || '—'}</div>
+    <div style="font-size:.8rem;color:var(--text-lo);margin-top:2px;">${currentUser.email || currentUser.phoneNumber || ''}</div>`;
 
   try {
     const fb = await OdakApp.waitForFirebase();
-    const info = await fb.DB.getParentByChildCode(code);
-    if (!info) throw new Error('not_found');
-    childInfo = info;
-    sessionStorage.setItem('odak_child_code', code);
-    enterStartPhase();
+    parentData = await fb.DB.getParent(currentUser.uid);
   } catch(e) {
-    document.getElementById('code-error').textContent = t('codeError');
-    document.getElementById('btn-enter-code').disabled = false;
-    document.getElementById('lbl-btn-enter').textContent = t('btnEnter');
-  }
-}
-
-function enterStartPhase() {
-  const name = childInfo.childName || '';
-  const initial = name.charAt(0).toUpperCase() || '?';
-  document.getElementById('welcome-avatar').textContent = initial;
-  document.getElementById('welcome-name').textContent = t('merhaba', name);
-  document.getElementById('nav-child-name').textContent = name;
-
-  // Yaşı childInfo'dan al
-  const childAge = childInfo.childAge || 10;
-  window._childAge = childAge;
-
-  const activeSession = childInfo.activeSession;
-  sessionDuration = activeSession?.sessionDuration || childInfo.parentData?.settings?.sessionDuration || 20;
-  questions = activeSession?.questions || [];
-
-  document.getElementById('session-pill-text').textContent = t('sessionPill', sessionDuration);
-  totalSeconds = sessionDuration * 60;
-  updateClock(totalSeconds);
-
-  if (!questions.length) {
-    OdakApp.showToast(t('noSession'), 'error');
+    parentData = { children:[], sessions:[], settings:{ sessionDuration:20, aiProvider:'openai', apiKey:'' } };
   }
 
-  showPhase('phase-start');
-}
+  setupPDFDrop();
+  loadChildSelectGrid();
+  loadChildren();
+  loadAISettings();
+  buildThemeOptions();
 
-function startSession() {
-  const hasSpeech = 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
-  if (!hasSpeech) {
-    OdakApp.showToast(t('errorNoAI'), 'error');
-    // Devam ettir ama hız ölçümü olmadan
-  }
-  showPhase('phase-reading');
-  startTimer();
-  scheduleNextRal();
-
-  // Canlı süre takibini başlat (ebeveyn panelinde görünsün)
-  const code = sessionStorage.getItem('odak_child_code');
-  OdakApp.waitForFirebase().then(fb => {
-    fb.DB.startLiveTimer(code, totalSeconds).catch(()=>{});
+  // Secret panel
+  document.getElementById('secret-trigger').addEventListener('click', () => {
+    secretClickCount++;
+    clearTimeout(secretTimer);
+    secretTimer = setTimeout(() => { secretClickCount = 0; }, 1200);
+    if (secretClickCount >= 3) {
+      secretClickCount = 0;
+      document.getElementById('secret-panel').classList.toggle('open');
+    }
   });
+  document.addEventListener('click', e => {
+    const sp = document.getElementById('secret-panel');
+    const st = document.getElementById('secret-trigger');
+    if (!sp.contains(e.target) && e.target !== st) sp.classList.remove('open');
+  });
+
+  // Page range validation
+  document.getElementById('inp-page-from').addEventListener('input', validatePageRange);
+  document.getElementById('inp-page-to').addEventListener('input', validatePageRange);
 }
 
-// ── Timer ──
-function startTimer() {
-  elapsedSeconds = 0;
-  updateClock(totalSeconds);
-  let lastRtdbUpdate = 0;
+// ── PDF Tab Switch ──
+function switchPDFTab(tab) {
+  const isUpload = tab === 'upload';
+  document.getElementById('pdf-upload-panel').style.display = isUpload ? 'block' : 'none';
+  document.getElementById('pdf-link-panel').style.display   = isUpload ? 'none'  : 'block';
 
-  timerInterval = setInterval(() => {
-    elapsedSeconds++;
-    const remaining = totalSeconds - elapsedSeconds;
-    updateClock(remaining);
-    document.getElementById('timer-fill').style.width = (remaining / totalSeconds * 100) + '%';
-
-    // RTDB'ye her 3 saniyede bir güncelle (gereksiz trafik yaratmamak için)
-    if (elapsedSeconds - lastRtdbUpdate >= 3) {
-      lastRtdbUpdate = elapsedSeconds;
-      const code = sessionStorage.getItem('odak_child_code');
-      const status = isListening ? 'listening' : 'reading';
-      OdakApp.waitForFirebase().then(fb => {
-        fb.DB.updateLiveTimer(code, remaining, status).catch(()=>{});
-      });
-    }
-
-    if (remaining <= 0) {
-      clearInterval(timerInterval);
-      clearTimeout(ralTimeoutId);
-      if (recognition) { try { recognition.stop(); } catch(e) {} }
-      document.getElementById('ral-banner').classList.remove('show');
-      document.getElementById('wpm-live').style.display = 'none';
-
-      // Canlı süre kaydını sil
-      const code = sessionStorage.getItem('odak_child_code');
-      OdakApp.waitForFirebase().then(fb => { fb.DB.endLiveTimer(code).catch(()=>{}); });
-
-      onSessionEnd();
-    }
-  }, 1000);
+  const tabUpload = document.getElementById('tab-upload');
+  const tabLink   = document.getElementById('tab-link');
+  if (isUpload) {
+    tabUpload.style.background = 'var(--surface)'; tabUpload.style.color = 'var(--text-hi)';
+    tabLink.style.background   = 'none';           tabLink.style.color   = 'var(--text-lo)';
+  } else {
+    tabLink.style.background   = 'var(--surface)'; tabLink.style.color = 'var(--text-hi)';
+    tabUpload.style.background = 'none';            tabUpload.style.color = 'var(--text-lo)';
+  }
 }
 
-function updateClock(secs) {
-  if (secs < 0) secs = 0;
-  const m = Math.floor(secs / 60);
-  const s = secs % 60;
-  document.getElementById('timer-clock').textContent =
-    String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
-}
+// ── PDF from URL ──
+async function loadPDFFromURL() {
+  const url = document.getElementById('inp-pdf-url').value.trim();
+  if (!url) return;
 
-// ── Read Aloud + Speed ──
-function playBeep() {
+  const errEl     = document.getElementById('url-error');
+  const loadingEl = document.getElementById('url-loading');
+  errEl.style.display     = 'none';
+  loadingEl.style.display = 'flex';
+  document.getElementById('btn-load-url').disabled = true;
+
   try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const pattern = [
-      { freq:1400, start:0.0,  dur:0.22 },
-      { freq:1400, start:0.32, dur:0.22 },
-      { freq:1400, start:0.64, dur:0.22 },
-      { freq:1750, start:0.96, dur:0.65 },
-    ];
-    pattern.forEach(({ freq, start, dur }) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain); gain.connect(ctx.destination);
-      osc.type = 'square'; osc.frequency.value = freq;
-      gain.gain.setValueAtTime(0, ctx.currentTime + start);
-      gain.gain.linearRampToValueAtTime(0.5, ctx.currentTime + start + 0.01);
-      gain.gain.setValueAtTime(0.5, ctx.currentTime + start + dur - 0.02);
-      gain.gain.linearRampToValueAtTime(0, ctx.currentTime + start + dur);
-      osc.start(ctx.currentTime + start);
-      osc.stop(ctx.currentTime + start + dur + 0.05);
-    });
-  } catch(e) {}
-}
+    // Google Drive linkini direkt indirme linkine çevir
+    const fetchUrl = convertGDriveURL(url);
 
-function scheduleNextRal() {
-  const total = sessionDuration * 60;
-  const minGap = Math.max(20, Math.floor(total * 0.15));
-  const maxGap = Math.max(40, Math.floor(total * 0.25));
-  const delay  = (Math.random() * (maxGap - minGap) + minGap) * 1000;
-  console.log(`[Okuyan Zeka AI] Sonraki sinyal: ${Math.round(delay/1000)}sn`);
-  ralTimeoutId = setTimeout(triggerRal, delay);
-}
-
-function triggerRal() {
-  if (isListening) return;
-  const banner  = document.getElementById('ral-banner');
-  const ralText = document.getElementById('ral-text');
-  const dot     = document.getElementById('ral-dot');
-
-  playBeep();
-  ralText.textContent = t('ralPrompt');
-  banner.className = 'ral-banner show';
-  dot.style.display = 'none';
-  document.body.classList.add('ral-active');
-  document.body.classList.remove('ral-listening');
-
-  setTimeout(() => {
-    ralText.textContent = t('ralListening');
-    banner.className = 'ral-banner show listening';
-    dot.style.display = 'block';
-    document.body.classList.remove('ral-active');
-    document.body.classList.add('ral-listening');
-
-    const startTime = Date.now();
-    startSpeechRecognition(transcript => {
-      const durationSec = (Date.now() - startTime) / 1000;
-      const wordCount   = transcript.trim().split(/\s+/).filter(Boolean).length;
-      const wpm = durationSec > 0 ? Math.round((wordCount / durationSec) * 60) : 0;
-
-      segments.push({ transcript, wpm, timestamp: elapsedSeconds, durationSec, wordCount });
-      document.getElementById('seg-badge').textContent = t('segBadge', segments.length);
-
-      // WPM live göster
-      if (wpm > 0) {
-        document.getElementById('wpm-val').textContent = wpm;
-        document.getElementById('wpm-live').style.display = 'block';
-        setTimeout(() => { document.getElementById('wpm-live').style.display = 'none'; }, 4000);
+    let arrayBuffer;
+    try {
+      const res = await fetch(fetchUrl);
+      if (!res.ok) throw new Error('fetch_fail');
+      arrayBuffer = await res.arrayBuffer();
+    } catch(fetchErr) {
+      // CORS hatası — proxy ile dene
+      try {
+        const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(fetchUrl)}`;
+        const res2 = await fetch(proxyUrl);
+        if (!res2.ok) throw new Error('proxy_fail');
+        arrayBuffer = await res2.arrayBuffer();
+      } catch(proxyErr) {
+        throw new Error('cors');
       }
+    }
 
-      ralText.textContent = t('ralDone');
-      banner.className = 'ral-banner show';
-      dot.style.display = 'none';
-      document.body.classList.remove('ral-active', 'ral-listening');
+    // pdf.js ile yükle
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    window._currentPDF = pdf;
+    totalPdfPages = pdf.numPages;
 
-      setTimeout(() => {
-        banner.classList.remove('show');
-        const remaining = totalSeconds - elapsedSeconds;
-        if (remaining > 30) scheduleNextRal();
-      }, 2000);
-    });
-  }, 2200);
+    // Dosya adını URL'den çıkar
+    const fileName = decodeURIComponent(url.split('/').pop().split('?')[0]) || 'document.pdf';
+    const sizeMB   = (arrayBuffer.byteLength / 1024 / 1024).toFixed(1);
+
+    document.getElementById('pdf-name').textContent = fileName;
+    document.getElementById('pdf-meta').textContent = `${sizeMB} MB · ${totalPdfPages} sayfa · URL`;
+    document.getElementById('inp-page-to').value = Math.min(10, totalPdfPages);
+    document.getElementById('inp-page-to').max   = totalPdfPages;
+    document.getElementById('pdf-info-box').style.display = 'block';
+    document.getElementById('pdf-warn').style.display     = 'none';
+    document.getElementById('btn-extract').disabled = false;
+
+    OdakApp.showToast('PDF yüklendi ✅', 'success');
+  } catch(e) {
+    const msg = e.message === 'cors'
+      ? t('urlErrorCors')
+      : t('urlErrorFetch');
+    errEl.textContent   = msg;
+    errEl.style.display = 'block';
+  }
+
+  loadingEl.style.display = 'none';
+  document.getElementById('btn-load-url').disabled = false;
 }
 
-function startSpeechRecognition(onResult) {
-  isListening = true;
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) { isListening = false; onResult(''); return; }
+function convertGDriveURL(url) {
+  // Google Drive paylaşım linki → direkt indirme
+  // https://drive.google.com/file/d/FILE_ID/view → https://drive.google.com/uc?export=download&id=FILE_ID
+  const gdMatch = url.match(/drive\.google\.com\/file\/d\/([^/]+)/);
+  if (gdMatch) return `https://drive.google.com/uc?export=download&id=${gdMatch[1]}`;
 
-  recognition = new SR();
-  recognition.lang = OdakApp.Lang.get() === 'tr' ? 'tr-TR' : 'en-US';
-  recognition.interimResults = false;
-  recognition.maxAlternatives = 1;
+  // Google Drive open link
+  const gdOpen = url.match(/drive\.google\.com\/open\?id=([^&]+)/);
+  if (gdOpen) return `https://drive.google.com/uc?export=download&id=${gdOpen[1]}`;
 
-  let transcript = '';
-  const timeout = setTimeout(() => recognition.stop(), 25000);
-
-  recognition.onresult = e => { transcript = e.results[0][0].transcript; };
-  recognition.onend   = () => { clearTimeout(timeout); isListening = false; onResult(transcript || ''); };
-  recognition.onerror = () => { clearTimeout(timeout); isListening = false; onResult(''); };
-  recognition.start();
+  return url;
 }
 
-// ── Session End ──
-function onSessionEnd() {
-  showPhase('phase-loading');
-  document.getElementById('lbl-loading-msg').textContent = t('loadingQ');
+// ── PDF Drop ──
+function setupPDFDrop() {
+  const drop = document.getElementById('pdf-drop-area');
+  const input = document.getElementById('pdf-file-input');
 
-  if (!questions.length) {
-    saveReport({ score:0, segments, qa:[], aiAnalysis:'—', avgWpm:0 });
-    showPhase('phase-done');
+  drop.addEventListener('click', () => input.click());
+  drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('dragover'); });
+  drop.addEventListener('dragleave', () => drop.classList.remove('dragover'));
+  drop.addEventListener('drop', e => { e.preventDefault(); drop.classList.remove('dragover'); handlePDFFile(e.dataTransfer.files[0]); });
+  input.addEventListener('change', () => handlePDFFile(input.files[0]));
+}
+
+async function handlePDFFile(file) {
+  if (!file || file.type !== 'application/pdf') return;
+  document.getElementById('pdf-name').textContent = file.name;
+  document.getElementById('pdf-meta').textContent = (file.size / 1024 / 1024).toFixed(1) + ' MB';
+  document.getElementById('pdf-drop-area').style.display = 'none';
+  document.getElementById('pdf-info-box').style.display = 'block';
+  document.getElementById('pdf-warn').style.display = 'none';
+  document.getElementById('btn-extract').disabled = false;
+
+  // Sayfa sayısını öğren
+  try {
+    const arr = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arr }).promise;
+    totalPdfPages = pdf.numPages;
+    document.getElementById('pdf-meta').textContent += ` · ${totalPdfPages} sayfa`;
+    document.getElementById('inp-page-to').max = totalPdfPages;
+    document.getElementById('inp-page-to').value = Math.min(10, totalPdfPages);
+    // PDF'i global'de tut
+    window._currentPDF = pdf;
+  } catch(e) {
+    OdakApp.showToast('PDF okunamadı: ' + e.message, 'error');
+  }
+}
+
+function clearPDF() {
+  document.getElementById('pdf-drop-area').style.display = 'block';
+  document.getElementById('pdf-info-box').style.display = 'none';
+  document.getElementById('pdf-file-input').value = '';
+  const urlInp = document.getElementById('inp-pdf-url');
+  if (urlInp) urlInp.value = '';
+  const urlErr = document.getElementById('url-error');
+  if (urlErr) urlErr.style.display = 'none';
+  document.getElementById('btn-extract').disabled = true;
+  document.getElementById('text-preview').style.display = 'none';
+  document.getElementById('extract-status').textContent = '';
+  extractedText = '';
+  window._currentPDF = null;
+  updatePrepareBtn();
+}
+
+function validatePageRange() {
+  const from = parseInt(document.getElementById('inp-page-from').value) || 1;
+  const to   = parseInt(document.getElementById('inp-page-to').value) || 1;
+  const diff = to - from + 1;
+  const warn = document.getElementById('page-limit-warn');
+  if (diff > 15) { warn.classList.add('show'); }
+  else { warn.classList.remove('show'); }
+}
+
+async function extractPages() {
+  const from = parseInt(document.getElementById('inp-page-from').value) || 1;
+  const to   = Math.min(parseInt(document.getElementById('inp-page-to').value) || 10, from + 14);
+  document.getElementById('inp-page-to').value = to;
+
+  if (!window._currentPDF) { OdakApp.showToast(t('pdfFirst'), 'error'); return; }
+
+  const btn = document.getElementById('btn-extract');
+  btn.disabled = true;
+  document.getElementById('extract-status').textContent = t('extracting');
+
+  try {
+    let text = '';
+    for (let i = from; i <= Math.min(to, totalPdfPages); i++) {
+      const page    = await window._currentPDF.getPage(i);
+      const content = await page.getTextContent();
+      const pageText = content.items.map(item => item.str).join(' ');
+      text += `\n[Sayfa ${i}]\n${pageText}`;
+    }
+
+    text = text.trim();
+    if (text.length < 100) {
+      document.getElementById('pdf-warn').style.display = 'block';
+      document.getElementById('extract-status').textContent = t('extractFail');
+      extractedText = '';
+    } else {
+      extractedText = text;
+      document.getElementById('extract-status').textContent = t('extractDone', text.length);
+      document.getElementById('preview-content').textContent = text.substring(0, 300) + '…';
+      document.getElementById('text-preview').style.display = 'block';
+    }
+  } catch(e) {
+    document.getElementById('extract-status').textContent = t('extractFail');
+    OdakApp.showToast(e.message, 'error');
+  }
+
+  btn.disabled = false;
+  updatePrepareBtn();
+}
+
+function updatePrepareBtn() {
+  const ready = extractedText.length > 0 && selectedChildId;
+  document.getElementById('btn-prepare').disabled = !ready;
+}
+
+// ── Child select grid ──
+function loadChildSelectGrid() {
+  const grid = document.getElementById('child-select-grid');
+  const children = parentData?.children || [];
+  grid.innerHTML = '';
+
+  if (!children.length) {
+    grid.innerHTML = `<p style="font-size:.875rem;color:var(--text-lo);">Henüz çocuk eklenmemiş. <a onclick="showSection('children')" style="color:var(--accent);cursor:pointer;">Çocuk ekle</a></p>`;
     return;
   }
 
-  userAnswers = questions.map(() => '');
-  currentQIdx = 0;
-  renderQuestion(0);
-  showPhase('phase-questions');
+  children.forEach(child => {
+    const card = document.createElement('div');
+    card.className = 'child-card';
+    card.dataset.id = child.id;
+    const initial = child.name.charAt(0).toUpperCase();
+    card.innerHTML = `
+      <div class="child-avatar">${initial}</div>
+      <div class="child-name">${child.name}</div>
+      ${child.age ? `<div style="font-size:.72rem;color:var(--text-lo);margin-bottom:4px;">${child.age} yaş</div>` : ''}
+      <div class="child-code">${child.code}</div>`;
+    card.addEventListener('click', () => {
+      document.querySelectorAll('#child-select-grid .child-card').forEach(c => c.classList.remove('selected'));
+      card.classList.add('selected');
+      selectedChildId = child.id;
+      updatePrepareBtn();
+    });
+    grid.appendChild(card);
+  });
 }
 
-function renderQuestion(idx) {
-  const total = questions.length;
-  document.getElementById('q-counter').textContent = t('qCounter', idx+1, total);
-  document.getElementById('q-fill').style.width = (idx / total * 100) + '%';
-  document.getElementById('lbl-btn-next').textContent = idx === total-1 ? t('btnSubmit') : t('btnNext');
+// ── Prepare session ──
+async function prepareSession() {
+  if (!extractedText) { OdakApp.showToast(t('extractFirst'), 'error'); return; }
+  if (!selectedChildId) { OdakApp.showToast(t('selectChildFirst'), 'error'); return; }
 
-  const q = questions[idx];
-  const diffLabel = q.difficulty ? `<span class="badge badge-${q.difficulty === 'easy' ? 'green' : q.difficulty === 'medium' ? 'yellow' : 'red'} difficulty-badge">${t(q.difficulty)}</span>` : '';
-
-  document.getElementById('question-wrap').innerHTML = `
-    <div class="question-box">
-      ${diffLabel}
-      <div class="question-text">${q.question}</div>
-      <textarea class="answer-textarea" id="answer-ta" placeholder="${t('placeholder')}">${userAnswers[idx]}</textarea>
-    </div>`;
-}
-
-async function nextQuestion() {
-  userAnswers[currentQIdx] = document.getElementById('answer-ta')?.value.trim() || '';
-  if (currentQIdx < questions.length-1) {
-    currentQIdx++;
-    renderQuestion(currentQIdx);
-  } else {
-    document.getElementById('q-fill').style.width = '100%';
-    await analyseAndSave();
-  }
-}
-
-async function analyseAndSave() {
-  showPhase('phase-loading');
-  document.getElementById('lbl-loading-msg').textContent = t('loadingQ');
+  const btn = document.getElementById('btn-prepare');
+  btn.disabled = true;
+  document.getElementById('lbl-btn-prepare').textContent = t('preparing');
 
   const lang = OdakApp.Lang.get() === 'tr' ? 'Türkçe' : 'English';
-  const settings = childInfo.parentData?.settings || {};
-  const childAge = window._childAge || 10;
+  const settings = parentData?.settings || {};
+  const from = document.getElementById('inp-page-from').value;
+  const to   = document.getElementById('inp-page-to').value;
 
-  // Yaşa göre WPM normu
-  const expectedWpm = childAge <= 7 ? 70 : childAge <= 9 ? 100 : childAge <= 11 ? 130 : childAge <= 13 ? 160 : 180;
-  const ageContext = childAge <= 8
-    ? (lang === 'Türkçe' ? 'Sorular çok kısa, somut ve görsel olsun. Tek cümlelik cevap yeterli.' : 'Questions must be very short, concrete and visual. One-sentence answers.')
-    : childAge <= 11
-    ? (lang === 'Türkçe' ? 'Sorular neden-nasıl içersin. Orta zorlukta olsun.' : 'Questions should include why/how. Medium difficulty.')
-    : (lang === 'Türkçe' ? 'Sorular analiz, karşılaştırma ve yorum gerektirsin.' : 'Questions should require analysis, comparison and interpretation.');
+  const prompt = `Sen eğitimci bir asistansın. Aşağıdaki metin bir kitabın ${from}-${to}. sayfalarından alınmıştır.
+Bu metinden çocukların anlama düzeyini ölçen TAM OLARAK 7 soru üret.
+Dil: ${lang}
+Sorular metne dayalı, açık uçlu ve farklı zorluk seviyelerinde olsun.
+SADECE JSON array döndür, markdown yok:
+[{"question":"...","correctAnswer":"...","difficulty":"easy|medium|hard"}]
 
-  // Ortalama WPM hesapla
-  const validSegs = segments.filter(s => s.wpm > 0);
-  const avgWpm = validSegs.length ? Math.round(validSegs.reduce((a,b) => a+b.wpm, 0) / validSegs.length) : 0;
-
-  const qaText = questions.map((q, i) =>
-    `Q${i+1} [${q.difficulty||''}]: ${q.question}\nDoğru: ${q.correctAnswer}\nÖğrenci: ${userAnswers[i]||'—'}`
-  ).join('\n\n');
-
-  const segText = segments.map((s,i) =>
-    `Segment ${i+1}: ${s.wordCount} kelime, ${s.wpm} k/dk`
-  ).join('\n');
-
-  const prompt = `Eğitim analisti. Çocuğun okuma oturumunu ${lang} dilinde değerlendir.
-
-ÇOCUK BİLGİSİ:
-- Yaş: ${childAge}
-- Bu yaş için beklenen okuma hızı: ${expectedWpm} kelime/dakika
-
-OKUMA HIZI SEGMENTLERİ:
-${segText || 'Segment yok'}
-
-SORU VE CEVAPLAR:
-${qaText}
-
-ANALİZDE DİKKAT ET:
-- Hızı yaşa göre değerlendir (beklenen: ${expectedWpm} k/dk)
-- ${ageContext}
-- Hız düşüklüğünün dikkat mi yoksa metni anlamama mı olduğunu yorumla
-
-SADECE JSON döndür (markdown yok):
-{"score":75,"qa":[{"result":"correct"}],"aiAnalysis":"..."}
-
-score: 0-100 anlama skoru
-qa: her soru için result: "correct", "wrong" veya "skipped"
-aiAnalysis: 3-5 cümle yaşa uygun Türkçe/İngilizce analiz`;
+METİN:
+${extractedText.substring(0, 6000)}`;
 
   try {
     const raw = await OdakApp.callAI(prompt, settings);
-    const result = OdakApp.parseJSON(raw);
-    const finalQA = questions.map((q, i) => ({
-      question: q.question,
-      correctAnswer: q.correctAnswer,
-      userAnswer: userAnswers[i] || '',
-      result: result.qa?.[i]?.result || 'skipped'
-    }));
-    await saveReport({
-      score: result.score || 0,
-      segments: segments.map(s => ({ wpm: s.wpm, timestamp: s.timestamp, wordCount: s.wordCount })),
-      qa: finalQA,
-      aiAnalysis: result.aiAnalysis || '—',
-      avgWpm
-    });
+    preparedQuestions = OdakApp.parseJSON(raw);
+    if (!Array.isArray(preparedQuestions) || !preparedQuestions.length) throw new Error('parse');
+
+    // Soruları ve ayarları Firebase'e kaydet (çocuk okurken kullanacak)
+    const child = (parentData?.children || []).find(c => c.id === selectedChildId);
+    const sessionDuration = parseInt(document.getElementById('inp-duration').value) || 20;
+    const sessionData = {
+      questions: preparedQuestions,
+      pageFrom: from, pageTo: to,
+      sessionDuration, childId: selectedChildId,
+      childName: child?.name || '',
+      preparedAt: new Date().toISOString(),
+      status: 'prepared'
+    };
+
+    const fb = await OdakApp.waitForFirebase();
+    await fb.DB.saveActiveSession(currentUser.uid, child?.code, sessionData);
+
+    // Hazır göster
+    document.getElementById('ready-code').textContent = child?.code || '—';
+    document.getElementById('session-ready-box').style.display = 'block';
+    OdakApp.showToast(OdakApp.Lang.get() === 'tr' ? 'Oturum hazır!' : 'Session ready!', 'success');
+
+    // Canlı süre takibini başlat
+    startLiveTimerPolling(child?.code);
   } catch(e) {
-    await saveReport({ score:0, segments:[], qa:[], aiAnalysis:'—', avgWpm });
+    OdakApp.showToast(e.message === 'no_api_key' ? t('aiProvider') + ' API key eksik' : e.message, 'error');
   }
-  showPhase('phase-done');
+
+  btn.disabled = false;
+  document.getElementById('lbl-btn-prepare').textContent = t('btnPrepare');
+  updatePrepareBtn();
 }
 
-async function saveReport(payload) {
+// ── Canlı Süre Takibi (Polling) ──
+var liveTimerPollInterval = null;
+
+function startLiveTimerPolling(code) {
+  if (!code) return;
+  clearInterval(liveTimerPollInterval);
+
+  liveTimerPollInterval = setInterval(async () => {
+    try {
+      const fb = await OdakApp.waitForFirebase();
+      const live = await fb.DB.getLiveSession(code);
+      const box = document.getElementById('live-timer-box');
+
+      if (!live) {
+        // Oturum henüz başlamadı veya bitti
+        box.style.display = 'none';
+        return;
+      }
+
+      box.style.display = 'block';
+      const mins = Math.floor(live.remainingSeconds / 60);
+      const secs = live.remainingSeconds % 60;
+      document.getElementById('live-timer-clock').textContent =
+        String(mins).padStart(2,'0') + ':' + String(secs).padStart(2,'0');
+
+      const pct = (live.remainingSeconds / live.totalSeconds) * 100;
+      document.getElementById('live-timer-fill').style.width = pct + '%';
+
+      const statusText = live.status === 'listening'
+        ? (OdakApp.Lang.get() === 'tr' ? '🎙️ Sesli okuyor…' : '🎙️ Reading aloud…')
+        : (OdakApp.Lang.get() === 'tr' ? '📖 Okuyor…' : '📖 Reading…');
+      document.getElementById('live-timer-status').textContent = statusText;
+
+      if (live.remainingSeconds <= 0) {
+        box.style.display = 'none';
+        clearInterval(liveTimerPollInterval);
+      }
+    } catch(e) {
+      // Sessiz geç — RTDB henüz yok veya hata
+    }
+  }, 3000);
+}
+
+// ── Section nav ──
+function showSection(name) {
+  ['session','children','reports','settings'].forEach(s => {
+    const sec = document.getElementById(`section-${s}`);
+    const btn = document.getElementById(`nav-${s}-btn`);
+    if (sec) sec.style.display = s === name ? 'block' : 'none';
+    if (btn) btn.classList.toggle('active', s === name);
+  });
+  if (name === 'reports') loadReports();
+}
+
+// ── Children ──
+function loadChildren() {
+  const grid = document.getElementById('children-grid');
+  if (!grid) return;
+  const children = parentData?.children || [];
+  grid.innerHTML = '';
+  children.forEach(child => {
+    const card = document.createElement('div');
+    card.className = 'child-card';
+    const initial = child.name.charAt(0).toUpperCase();
+    card.innerHTML = `<div class="child-avatar">${initial}</div><div class="child-name">${child.name}</div>${child.age ? `<div style="font-size:.72rem;color:var(--text-lo);margin-bottom:4px;">${child.age} yaş</div>` : ""}<div class="child-code">${child.code}</div>`;
+    grid.appendChild(card);
+  });
+  const addBtn = document.createElement('div');
+  addBtn.className = 'add-child-card';
+  addBtn.innerHTML = `<span style="font-size:1.75rem">＋</span><span style="font-size:.875rem;font-weight:600;">${t('addChild')}</span>`;
+  addBtn.onclick = () => document.getElementById('add-child-modal').classList.remove('hidden');
+  grid.appendChild(addBtn);
+}
+
+function closeAddChild() { document.getElementById('add-child-modal').classList.add('hidden'); }
+
+async function addChild() {
+  const name = document.getElementById('inp-child-name').value.trim();
+  const age  = parseInt(document.getElementById('inp-child-age').value) || 10;
+  if (!name) return;
+  const code  = OdakApp.generateChildCode();
+  const child = { id: Date.now().toString(), name, age, code, createdAt: new Date().toISOString() };
   try {
-    const fb  = await OdakApp.waitForFirebase();
-    const code = sessionStorage.getItem('odak_child_code');
-    const activeSession = childInfo.activeSession || {};
-    await fb.DB.saveChildSession(code, {
-      date: new Date().toISOString(),
-      durationMinutes: sessionDuration,
-      pageFrom: activeSession.pageFrom,
-      pageTo: activeSession.pageTo,
-      ...payload
-    });
-  } catch(e) { console.warn('Rapor kaydedilemedi:', e); }
+    const fb = await OdakApp.waitForFirebase();
+    await fb.DB.addChild(currentUser.uid, child);
+    await fb.DB.registerChildCode(code, currentUser.uid, child.id, name, age);
+    parentData.children = [...(parentData.children || []), child];
+    loadChildren();
+    loadChildSelectGrid();
+    closeAddChild();
+    document.getElementById('code-display').textContent = code;
+    document.getElementById('code-modal').classList.remove('hidden');
+  } catch(e) { OdakApp.showToast(e.message, 'error'); }
 }
 
-if (typeof window.OdakApp !== 'undefined') { initChild(); }
-else { window.addEventListener('odak:app:ready', initChild, { once:true }); }
+function closeCodeModal() { document.getElementById('code-modal').classList.add('hidden'); }
+
+// ── AI Settings ──
+function loadAISettings() {
+  const s = parentData?.settings || {};
+  if (s.aiProvider) document.getElementById('sel-ai-provider').value = s.aiProvider;
+  if (s.apiKey) document.getElementById('inp-ai-key').value = s.apiKey;
+}
+
+async function saveAISettings() {
+  const provider = document.getElementById('sel-ai-provider').value;
+  const key = document.getElementById('inp-ai-key').value.trim();
+  try {
+    const fb = await OdakApp.waitForFirebase();
+    parentData.settings = { ...(parentData.settings || {}), aiProvider: provider, apiKey: key };
+    await fb.DB.updateParent(currentUser.uid, { settings: parentData.settings });
+    OdakApp.showToast(t('aiSaved'), 'success');
+    document.getElementById('secret-panel').classList.remove('open');
+  } catch(e) { OdakApp.showToast(e.message, 'error'); }
+}
+
+// ── Theme ──
+function buildThemeOptions() {
+  const wrap = document.getElementById('theme-options');
+  if (!wrap) return;
+  const colors = { default:'#4F8EF7', light:'#2563EB', forest:'#34D399', sunset:'#FB7185' };
+  const current = OdakApp.Theme.current();
+  wrap.innerHTML = '';
+  OdakApp.Theme.themes.forEach(th => {
+    const dot = document.createElement('div');
+    dot.className = 'theme-dot' + (th === current ? ' active' : '');
+    dot.style.background = colors[th];
+    dot.title = t('themeLabels')?.[th] || th;
+    dot.onclick = () => { OdakApp.Theme.apply(th); buildThemeOptions(); };
+    wrap.appendChild(dot);
+  });
+}
+
+// ── Reports ──
+async function loadReports() {
+  const container = document.getElementById('reports-list');
+  container.innerHTML = `<div class="empty"><div class="empty-icon">⏳</div><div>${t('loadingReports')}</div></div>`;
+  try {
+    const fb = await OdakApp.waitForFirebase();
+    const data = await fb.DB.getParent(currentUser.uid);
+    let sessions = ((data && data.sessions) ? data.sessions : []);
+
+    // childSessions'dan da çek (çocuk auth olmadan yazdıysa buraya düşer)
+    try {
+      const childSess = await fb.DB.getChildSessionsByParent(currentUser.uid, parentData?.children || []);
+      if (childSess && childSess.length) {
+        // Tekrar eklenmemesi için code+date kombinasyonuna göre filtrele
+        const existingKeys = new Set(sessions.map(s => s.code + '_' + s.date));
+        const newOnes = childSess.filter(s => !existingKeys.has(s.code + '_' + s.date));
+        sessions = [...sessions, ...newOnes];
+      }
+    } catch(e) { /* childSessions okuma hatası — devam et */ }
+
+    sessions = sessions.slice().reverse();
+    if (!sessions.length) {
+      container.innerHTML = `<div class="empty"><div class="empty-icon">📭</div><div>${t('noReports')}</div></div>`;
+      return;
+    }
+    container.innerHTML = '';
+    const list = document.createElement('div');
+    list.className = 'report-list';
+    sessions.forEach((s, idx) => {
+      const score = s.score ?? 0;
+      const sc = score >= 70 ? 'score-hi' : score >= 40 ? 'score-md' : 'score-lo';
+      const date = new Date(s.date).toLocaleDateString(OdakApp.Lang.get() === 'tr' ? 'tr-TR' : 'en-GB');
+      const wpm  = s.avgWpm ? Math.round(s.avgWpm) + ' k/dk' : '—';
+      const row  = document.createElement('div');
+      row.className = 'report-row';
+      row.innerHTML = `
+        <div class="report-score ${sc}">${score}%</div>
+        <div class="report-meta">
+          <div class="report-child">${s.childName || '—'} · ${wpm}</div>
+          <div class="report-date">${date} · ${s.durationMinutes || '—'} ${t('min')} · S.${s.pageFrom||'?'}-${s.pageTo||'?'}</div>
+        </div>
+        <span class="badge badge-blue">${(s.qa||[]).length} soru</span>`;
+      row.onclick = () => openDetail(sessions.length - 1 - idx, s);
+      list.appendChild(row);
+    });
+    container.appendChild(list);
+
+    // Gelişim grafiği — son 10 oturum (kronolojik sıra)
+    drawProgressChart(sessions.slice().reverse().slice(-10));
+
+  } catch(e) {
+    container.innerHTML = `<div class="empty"><div class="empty-icon">⚠️</div><div>${e.message}</div></div>`;
+  }
+}
+
+function drawProgressChart(sessions) {
+  const canvas = document.getElementById('progress-chart');
+  if (!canvas) return;
+  if (progressChartInstance) progressChartInstance.destroy();
+
+  if (!sessions.length) return;
+
+  const labels = sessions.map((s, i) => {
+    const d = new Date(s.date);
+    return `${d.getDate()}/${d.getMonth()+1}`;
+  });
+  const scores = sessions.map(s => s.score ?? 0);
+  const wpms   = sessions.map(s => s.avgWpm ?? 0);
+
+  progressChartInstance = new Chart(canvas.getContext('2d'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: OdakApp.Lang.get() === 'tr' ? 'Anlama Skoru (%)' : 'Comprehension (%)',
+          data: scores,
+          borderColor: '#4F8EF7',
+          backgroundColor: 'rgba(79,142,247,.1)',
+          tension: 0.4,
+          fill: true,
+          pointBackgroundColor: '#4F8EF7',
+          pointRadius: 5,
+          yAxisID: 'y'
+        },
+        {
+          label: OdakApp.Lang.get() === 'tr' ? 'Okuma Hızı (k/dk)' : 'Reading Speed (wpm)',
+          data: wpms,
+          borderColor: '#A78BFA',
+          backgroundColor: 'rgba(167,139,250,.1)',
+          tension: 0.4,
+          fill: false,
+          pointBackgroundColor: '#A78BFA',
+          pointRadius: 5,
+          yAxisID: 'y1'
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { labels: { color: '#B8C5E0', font: { family: 'Inter', size: 11 }, padding: 16 } }
+      },
+      scales: {
+        x: { ticks: { color: '#6B7A99', font: { size: 11 } }, grid: { color: 'rgba(79,142,247,.06)' } },
+        y: {
+          type: 'linear', position: 'left',
+          min: 0, max: 100,
+          ticks: { color: '#4F8EF7', font: { size: 11 } },
+          grid: { color: 'rgba(79,142,247,.06)' }
+        },
+        y1: {
+          type: 'linear', position: 'right',
+          min: 0,
+          ticks: { color: '#A78BFA', font: { size: 11 } },
+          grid: { drawOnChartArea: false }
+        }
+      }
+    }
+  });
+}
+
+function openDetail(originalIdx, session) {
+  selectedReportIndex = originalIdx;
+  const score = session.score ?? 0;
+  document.getElementById('dov-score').textContent = score + '%';
+  document.getElementById('dov-wpm').textContent = session.avgWpm ? Math.round(session.avgWpm) : '—';
+  document.getElementById('dov-pages').textContent = `${session.pageFrom||'?'}-${session.pageTo||'?'}`;
+  document.getElementById('dov-score-lbl').textContent = t('scoreLbl');
+  document.getElementById('dov-wpm-lbl').textContent = t('wpmLbl');
+  document.getElementById('dov-pages-lbl').textContent = t('pagesLbl');
+
+  // Chart
+  if (detailChartInstance) detailChartInstance.destroy();
+  const qa = session.qa || [];
+  const correct = qa.filter(q => q.result === 'correct').length;
+  const wrong   = qa.filter(q => q.result === 'wrong').length;
+  const ctx = document.getElementById('detail-chart').getContext('2d');
+  detailChartInstance = new Chart(ctx, {
+    type:'doughnut',
+    data:{ labels:[t('correct'),t('wrong'),t('skipped')], datasets:[{ data:[correct,wrong,qa.length-correct-wrong], backgroundColor:['#34D399','#F87171','#6B7A99'], borderWidth:0 }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'right', labels:{ color:'#B8C5E0', font:{ family:'Inter', size:12 }, padding:14 } } }, cutout:'68%' }
+  });
+
+  // Speed segments
+  const segs = session.segments || [];
+  document.getElementById('lbl-speed-desc').textContent = t('speedDesc');
+  const speedWrap = document.getElementById('speed-segs');
+  speedWrap.innerHTML = segs.length === 0 ? `<p style="color:var(--text-xlo);font-size:.875rem">—</p>` :
+    segs.map((s, i) => {
+      const wpm = s.wpm || 0;
+      const maxWpm = 200;
+      const pct = Math.min(wpm / maxWpm * 100, 100);
+      const color = wpm >= 120 ? '#34D399' : wpm >= 70 ? '#FBBF24' : '#F87171';
+      const label = wpm >= 120 ? t('focusHigh') : wpm >= 70 ? t('focusMed') : t('focusLow');
+      return `<div class="speed-seg-row">
+        <span class="speed-seg-label">#${i+1} — ${label}</span>
+        <div class="speed-bar-wrap"><div class="speed-bar" style="width:${pct}%;background:${color}"></div></div>
+        <span class="speed-pct">${wpm} k/dk</span></div>`;
+    }).join('');
+
+  // Q&A
+  document.getElementById('qa-list').innerHTML = qa.map((q, i) => {
+    const rb = q.result === 'correct' ? `<span class="badge badge-green">${t('correct')}</span>`
+      : q.result === 'wrong' ? `<span class="badge badge-red">${t('wrong')}</span>`
+      : `<span class="badge">${t('skipped')}</span>`;
+    return `<div class="qa-card">
+      <div class="qa-q">${i+1}. ${q.question}</div>
+      <div class="qa-a">${t('yourAnswer')}: ${q.userAnswer||'—'} ${rb}</div>
+      ${q.correctAnswer ? `<div style="font-size:.75rem;color:var(--text-lo);margin-top:4px;">${t('correctAnswer')}: ${q.correctAnswer}</div>` : ''}
+    </div>`;
+  }).join('');
+
+  document.getElementById('ai-analysis-text').textContent = session.aiAnalysis || '—';
+
+  document.querySelectorAll('.dtab').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelector('[data-tab="overview"]').classList.add('active');
+  document.getElementById('dp-overview').classList.add('active');
+  document.getElementById('detail-modal').classList.remove('hidden');
+}
+
+document.querySelectorAll('.dtab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.dtab').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('dp-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+document.getElementById('btn-del-report').onclick = async () => {
+  if (selectedReportIndex === null) return;
+  try {
+    const fb = await OdakApp.waitForFirebase();
+    const data = await fb.DB.getParent(currentUser.uid);
+    data.sessions.splice(selectedReportIndex, 1);
+    await fb.DB.updateParent(currentUser.uid, { sessions: data.sessions });
+    document.getElementById('detail-modal').classList.add('hidden');
+    OdakApp.showToast(OdakApp.Lang.get() === 'tr' ? 'Rapor silindi' : 'Report deleted', 'success');
+    loadReports();
+  } catch(e) { OdakApp.showToast(e.message, 'error'); }
+};
+
+async function doLogout() {
+  const fb = await OdakApp.waitForFirebase();
+  await fb.Auth.logout();
+  window.location.href = '../auth/index.html';
+}
+document.getElementById('btn-logout').onclick = doLogout;
+
+if (typeof window.OdakApp !== 'undefined') { initParent(); }
+else { window.addEventListener('odak:app:ready', initParent, { once:true }); }
 </script>
 </body>
 </html>
